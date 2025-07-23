@@ -42,12 +42,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
+            "assets": ["src/assets"],
             "styles": [
               "src/styles.scss"
             ],
@@ -91,6 +86,9 @@
               "buildTarget": "msn-ptv:build:development"
             }
           },
+          "options": {
+            "port": 4201
+          },
           "defaultConfiguration": "development"
         },
         "extract-i18n": {
@@ -114,5 +112,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "a02b9ed8-359e-4127-bd6f-42f0711d5642"
   }
 }
