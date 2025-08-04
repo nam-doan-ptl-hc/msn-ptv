@@ -1,0 +1,14 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.router-container {
+  flex: 1;
+  margin: 0px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  background: #dcddde;
+}

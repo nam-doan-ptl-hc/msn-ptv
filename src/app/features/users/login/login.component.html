@@ -1,1 +1,61 @@
-<h2>Login page</h2>
+<div class="container wrapper-login justify-content-center align-items-center">
+  <div class="login-box reg-step-1" style="display: block">
+    <div class="login-header">
+      <a href="/" class="login-logo-temp">
+        <img src="/assets/images/logo-patient.svg" />
+      </a>
+    </div>
+    <div class="login-body box-content-login">
+      <form [formGroup]="loginForm" (ngSubmit)="submitLogin()">
+        <div class="mb-3">
+          <label for="exampleInputEmail1" class="form-label"
+            >Email or Mobile Number <span class="sp-star">*</span></label
+          >
+          <input
+            type="email"
+            class="form-control"
+            id="exampleInputEmail1"
+            aria-describedby="emailHelp"
+            formControlName="email"
+          />
+          <div
+            class="text-danger"
+            *ngIf="
+              loginForm.get('email')?.touched && loginForm.get('email')?.invalid
+            "
+          >
+            <small *ngIf="loginForm.get('email')?.errors?.['required']"
+              >Enter an email or mobile number.</small
+            >
+            <small *ngIf="loginForm.get('email')?.errors?.['email']"
+              >Account is invalid.</small
+            >
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="exampleInputPassword1" class="form-label"
+            >Password <span class="sp-star">*</span></label
+          >
+          <input
+            type="password"
+            class="form-control"
+            id="exampleInputPassword1"
+            formControlName="password"
+          />
+          <div
+            class="text-danger"
+            *ngIf="
+              loginForm.get('password')?.touched &&
+              loginForm.get('password')?.invalid
+            "
+          >
+            <small *ngIf="loginForm.get('password')?.errors?.['required']"
+              >Enter a password.</small
+            >
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-login">Login</button>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,128 @@
+#wrapper-hds {
+  padding: 10px;
+}
+.img-avata {
+  width: 50px;
+  height: 50px;
+}
+.img-card img {
+  width: 40px;
+  height: 40px;
+}
+.row-top {
+  display: flex;
+}
+.u-info {
+  padding-left: 20px;
+  .title {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+}
+.md-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+    0 2px 1px -1px rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.87);
+  background-color: rgb(255, 255, 255);
+  border-radius: 2px;
+  padding: 20px;
+  background: #fff;
+  min-height: 166px;
+}
+.row-chart {
+  margin-top: 20px;
+}
+.row-top {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  justify-content: space-between;
+  -webkit-justify-content: space-between;
+  height: 86px;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 10px;
+}
+.last-sync-time {
+  font-size: 12px;
+}
+.bottom-card {
+  display: flex;
+}
+.snap-view {
+  display: flex;
+  justify-content: end;
+  width: 100%;
+}
+.snap-view button {
+  cursor: pointer;
+  background: #fff;
+  border: none;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.time-snap {
+  line-height: 14px;
+  display: flex;
+  min-width: 78%;
+  .material-icons {
+    margin-top: 5px;
+  }
+}
+.p-title-snapshot {
+  text-transform: uppercase;
+  height: 24px;
+  margin-bottom: 5px;
+}
+.row-top .align-right p.s26 {
+  font-size: 24px;
+}
+.unit {
+  font-size: 14px;
+  color: #838383;
+  margin: 5px 0 0 5px;
+  text-align: center;
+}
+.align-right {
+  text-align: right;
+}
+.div-user {
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 90px;
+}
+.btn-recent {
+  margin-top: 15px;
+}
+.img-icon {
+  width: 50px;
+  height: 40px;
+}
+.title-chart {
+  color: #000;
+  font-size: 16px;
+  display: table-cell;
+  vertical-align: middle;
+  position: relative;
+  line-height: 40px;
+  padding-left: 10px;
+}
+.div-title-chart {
+  justify-content: space-between;
+}
+.card-hd-text {
+  color: #838383;
+  text-transform: uppercase;
+  margin: 5px 5px 0 0;
+  font-size: 12px;
+}
+.unit {
+  font-size: 14px;
+  color: #838383;
+  margin: 5px 0 0 5px;
+  text-align: center;
+}
+.s24 {
+  font-size: 24px;
+  font-weight: 400;
+}

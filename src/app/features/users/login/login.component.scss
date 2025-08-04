@@ -1,0 +1,42 @@
+h2 {
+  color: red;
+}
+.login-box {
+  overflow: inherit;
+  padding: 20px 0;
+  width: 500px;
+  vertical-align: middle;
+  text-align: center;
+  margin: auto;
+}
+.login-logo-temp img {
+  height: 40px;
+  margin-bottom: 20px;
+}
+.login-body {
+  border: 0px solid;
+  box-shadow: 0px 0px 19px rgba(0, 0, 0, 0.3);
+  border-radius: 0px;
+  background: #ffffff;
+  height: auto;
+  margin: 1%;
+  position: relative;
+  padding: 20px;
+}
+.form-label {
+  float: left;
+}
+.text-danger {
+  text-align: left;
+}
+.wrapper-login {
+  display: flex;
+  height: 100%;
+}
+.btn-login {
+  min-width: 140px;
+}
+.sp-star {
+  color: red;
+  font-size: 12px;
+}

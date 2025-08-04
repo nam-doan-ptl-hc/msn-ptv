@@ -1,17 +1,33 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './features/users/login/login.component';
+import { MainLayoutComponent } from './layout/MainLayoutComponent/main-layout.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: LoginComponent,
+    loadComponent: () =>
+      import('./features/users/login/login.component').then(
+        (m) => m.LoginComponent
+      ),
     pathMatch: 'full',
   },
   {
-    path: 'dashboard',
-    loadComponent: () =>
-      import('./features/dashboards/dashboard/dashboard.component').then(
-        (m) => m.DashboardComponent
-      ),
+    path: '',
+    component: MainLayoutComponent,
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./features/dashboards/dashboard/dashboard.component').then(
+            (m) => m.DashboardComponent
+          ),
+      },
+      {
+        path: 'dashboard-hds/:id1/:id2/:id3',
+        loadComponent: () =>
+          import('./features/dashboards/hds/hds.component').then(
+            (m) => m.HdsComponent
+          ),
+      },
+    ],
   },
 ];
