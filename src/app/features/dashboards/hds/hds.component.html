@@ -179,13 +179,15 @@
           </div>
           <div class="wrapper-chart">
             @if (item.dataCharts[0]?.data?.length > 0) {
-            <canvas
-              baseChart
-              [data]="{ labels: labels, datasets: item.dataCharts }"
-              [options]="item.chartOptions"
-              [type]="item.chartType"
-              style="display: block; height: 300px; width: 100%"
-            ></canvas>
+            <div class="div-wrapper-chart">
+              <canvas
+                baseChart
+                [data]="{ labels: labels, datasets: item.dataCharts }"
+                [options]="item.chartOptions"
+                [type]="item.chartType"
+                style="display: block; height: 300px; width: 100%"
+              ></canvas>
+            </div>
             } @else {
             <p>No data available for selected period</p>
             }

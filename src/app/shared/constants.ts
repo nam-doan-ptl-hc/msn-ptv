@@ -5,7 +5,8 @@ export const initGrDetailPage = {
   listCodeShowIcon: [6, 8, 25, 27, 28],
 };
 export const initCharts = {
-  lineCharts: ['O2S', 'BODY_TEMPER'],
+  lineCharts: ['O2S', 'BODY_TEMPER', 'PPI', 'PVi', 'WEIGHT'],
+  barCharts: ['STEP', 'STEP_AZ'],
   minMaxCharts: ['HR'],
   sampleTypeShowCharts: [
     'O2S',
@@ -31,4 +32,5 @@ export const initCharts = {
     'HF_TREND',
     'AHAG',
   ],
+  monthNames: ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
 };

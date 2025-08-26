@@ -108,29 +108,8 @@ export class HdsComponent implements OnInit {
 
   isBrowser = false;
 
-  labels: string[] = [
-    'J',
-    'F',
-    'M',
-    'A',
-    'M',
-    'J',
-    'J',
-    'A',
-    'S',
-    'O',
-    'N',
-    'D',
-  ];
+  labels: string[] = initCharts.monthNames;
 
-  oxygenData: ChartDataset<'line'>[] = [];
-  oxygenOptions: ChartOptions<'line'> = {};
-
-  heartData: ChartDataset<'scatter'>[] = [];
-  heartOptions: ChartOptions<'scatter'> = {};
-
-  respirationData: ChartDataset<'scatter'>[] = [];
-  respirationOptions: ChartOptions<'scatter'> = {};
   dataSnapshots: any[] = [];
   sampleTypes: any[] = [];
   charts: any[] = [];
@@ -139,9 +118,12 @@ export class HdsComponent implements OnInit {
     start: new FormControl<Date | null>(null),
     end: new FormControl<Date | null>(null),
   });
-  dateFrom: string = '';
-  dateTo: string = '';
   textBtn: string = '';
+  params = {
+    dateFrom: '',
+    dateTo: '',
+    group_type: 'hour',
+  };
   showHeightInch = Utils.convertUnit.showHeightInch;
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
@@ -159,18 +141,18 @@ export class HdsComponent implements OnInit {
     });
     this.loadData();
     if (this.isBrowser) {
-      this.dateFrom = this.formatDate(new Date()) + ' 00:00:00';
-      this.dateTo = this.formatDate(new Date()) + ' 23:59:59';
+      this.params.dateFrom = this.formatDate(new Date()) + ' 00:00:00';
+      this.params.dateTo = this.formatDate(new Date()) + ' 23:59:59';
       this.textBtn = Utils.getDateString(new Date(), 'M d, yyyy');
     }
     this.range.valueChanges.subscribe((value) => {
       if (value.start && value.end) {
-        this.dateFrom = this.formatDate(value.start) + ' 00:00:00';
-        this.dateTo = this.formatDate(value.end) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(value.start) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(value.end) + ' 23:59:59';
         this.textBtn =
-          Utils.getDateString(this.dateFrom, 'M d, yyyy') +
+          Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
-          Utils.getDateString(this.dateTo, 'M d, yyyy');
+          Utils.getDateString(this.params.dateTo, 'M d, yyyy');
         this.loadData4Charts();
       }
     });
@@ -180,8 +162,9 @@ export class HdsComponent implements OnInit {
 
     switch (data) {
       case 1: // TODAY
-        this.dateFrom = this.formatDate(today) + ' 00:00:00';
-        this.dateTo = this.formatDate(today) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(today) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(today) + ' 23:59:59';
+        this.params.group_type = 'hour';
         break;
 
       case 2: // THIS WEEK
@@ -193,8 +176,9 @@ export class HdsComponent implements OnInit {
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
 
-        this.dateFrom = this.formatDate(startOfWeek) + ' 00:00:00';
-        this.dateTo = this.formatDate(endOfWeek) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(startOfWeek) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(endOfWeek) + ' 23:59:59';
+        this.params.group_type = 'days';
         break;
 
       case 3: // THIS MONTH
@@ -205,41 +189,43 @@ export class HdsComponent implements OnInit {
           0
         );
 
-        this.dateFrom = this.formatDate(startOfMonth) + ' 00:00:00';
-        this.dateTo = this.formatDate(endOfMonth) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(startOfMonth) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(endOfMonth) + ' 23:59:59';
+        this.params.group_type = 'days';
         break;
 
       case 4: // LAST 30 DAYS
         const thirtyDaysAgo = new Date(today);
         thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        this.dateFrom = this.formatDate(thirtyDaysAgo) + ' 00:00:00';
-        this.dateTo = this.formatDate(today) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(thirtyDaysAgo) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(today) + ' 23:59:59';
+        this.params.group_type = 'days';
         break;
 
       case 5: // THIS YEAR
         const startOfYear = new Date(today.getFullYear(), 0, 1);
         const endOfYear = new Date(today.getFullYear(), 11, 31);
-
-        this.dateFrom = this.formatDate(startOfYear) + ' 00:00:00';
-        this.dateTo = this.formatDate(endOfYear) + ' 23:59:59';
+        this.params.dateFrom = this.formatDate(startOfYear) + ' 00:00:00';
+        this.params.dateTo = this.formatDate(endOfYear) + ' 23:59:59';
+        this.params.group_type = 'months';
         break;
     }
     this.charts = [];
     this.textBtn =
       data == 1
         ? Utils.getDateString(new Date(), 'M d, yyyy')
-        : Utils.getDateString(this.dateFrom, 'M d, yyyy') +
+        : Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
-          Utils.getDateString(this.dateTo, 'M d, yyyy');
+          Utils.getDateString(this.params.dateTo, 'M d, yyyy');
     this.loadData4Charts();
   }
   private loadData4SnapshotCard(sample_type: any[] = []) {
     const body = {
       token: this.user.token || '',
       req_time: new Date().setHours(0, 0, 0, 0),
-      from: this.dateFrom,
-      to: this.dateTo,
+      from: this.params.dateFrom,
+      to: this.params.dateTo,
       patient_ref: this.id2,
       sample_type: sample_type,
     };
@@ -291,22 +277,69 @@ export class HdsComponent implements OnInit {
       },
     });
   }
+  xScale: any = {
+    type: 'linear',
+    offset: true, // căn đều 2 đầu
+    bounds: 'ticks', // ticks chiếm hết trục
+    min: this.params.group_type === 'hour' ? 0 : 1,
+    max:
+      this.params.group_type === 'hour'
+        ? 23
+        : this.params.group_type === 'days'
+        ? 31
+        : 12,
+    ticks: {
+      stepSize: 1,
+      callback: (value: any) => {
+        if (this.params.group_type === 'months') {
+          return initCharts.monthNames[value - 1]; // Jan–Dec
+        } else if (this.params.group_type === 'days') {
+          return value; // ngày
+        } else if (this.params.group_type === 'hour') {
+          return value + 'h'; // giờ
+        }
+        return value;
+      },
+    },
+  };
 
+  // Tooltip hiển thị đúng theo group_type
+  tooltipOpts: any = {
+    displayColors: false,
+    callbacks: {
+      title: () => null,
+      label: (context: any) => {
+        return Utils.roundDecimals(context.raw.y, 1);
+      },
+    },
+  };
   private loadData4Charts() {
     this.sampleTypes.forEach((item: any) => {
       const body = {
         token: this.user.token || '',
         req_time: new Date().setHours(0, 0, 0, 0),
         body_type: 'avg',
-        from: this.dateFrom,
-        to: this.dateTo,
-        group_type: 'months',
+        from: this.params.dateFrom,
+        to: this.params.dateTo,
+        group_type: this.params.group_type,
         last: false,
-        patient_ref: '5ffc28872573d9412263f717',
+        patient_ref: this.id2,
         sample_type_id: item._id.sample_type_group_id,
         show_patient_info: false,
         top_type: 'avg',
       };
+      if (
+        item._id.sample_type_group_id === 'STEP_AZ' ||
+        item._id.sample_type_group_id === 'HF_TREND'
+      ) {
+        body.top_type = 'none';
+      } else if (item._id.sample_type_group_id === 'STEP') {
+        body.body_type = 'total';
+        body.top_type = 'total';
+      } else if (item._id.sample_type_group_id === 'HEIGHT') {
+        body.body_type = 'last';
+        body.top_type = 'last';
+      }
       this.dashboardService.loadHDSSharedSamples4ChartView(body).subscribe({
         next: (res) => {
           if (res.code != 0) {
@@ -322,41 +355,36 @@ export class HdsComponent implements OnInit {
             min = 0,
             max = 0;
           if (!Utils.isEmpty(res.data)) {
-            if (
-              Utils.inArray(
-                item._id.sample_type_group_id,
-                initCharts.lineCharts
-              )
-            ) {
-              datas = [
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-              ];
-            }
             res.data[0].items.forEach((e: any) => {
               let data: any = {};
+
               if (
                 Utils.inArray(
                   item._id.sample_type_group_id,
                   initCharts.lineCharts
                 )
               ) {
-                datas[e._id.month - 1] = e.value;
+                // line chart kiểu theo tháng
+                if (this.params.group_type === 'months') {
+                  datas[e._id.month] = e.value;
+                } else if (this.params.group_type === 'days') {
+                  datas[e._id.day] = e.value; // ngày trong tháng
+                } else if (this.params.group_type === 'hour') {
+                  datas[e._id.hour] = e.value; // giờ trong ngày
+                }
               } else {
-                data.x = e._id.month;
+                // scatter chart
+                if (this.params.group_type === 'months') {
+                  data.x = e._id.month;
+                } else if (this.params.group_type === 'days') {
+                  data.x = e._id.day;
+                } else if (this.params.group_type === 'hour') {
+                  data.x = e._id.hour;
+                }
                 data.y = e.value;
                 datas.push(data);
               }
+
               if (e.value < min || min === 0) {
                 min = e.value;
               }
@@ -385,30 +413,45 @@ export class HdsComponent implements OnInit {
                 initCharts.lineCharts
               )
             ) {
-              // === 1. Chart Line ===
+              //
+              console.log('datas chart line', datas);
+
+              // Chuẩn hóa data: chuyển null -> bỏ
+              const scatterData = datas
+                .map((v, i) => (v !== null ? { x: i, y: v } : null))
+                .filter((v) => v);
+
               item.dataCharts = [
                 {
+                  type: 'line',
                   label: item._id.sample_type_group_id,
-                  data: datas,
+                  data: scatterData,
                   borderColor: item.items[0].chart_icon_color[0],
+                  backgroundColor: item.items[0].chart_icon_color[0],
                   tension: 0.3,
                   fill: false,
-                  pointRadius: 5,
+                  pointRadius: 6,
+                  showLine: true, // Bật line nối giữa các điểm
+                  spanGaps: true, // Cho phép bỏ qua null
                 },
               ];
 
               item.chartOptions = {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
+                  tooltip: this.tooltipOpts,
                 },
                 scales: {
+                  x: this.xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
                   },
                 },
               };
+
               item.chartType = 'line';
             } else if (
               Utils.inArray(
@@ -418,21 +461,6 @@ export class HdsComponent implements OnInit {
             ) {
               // === 2. scatter + min/max ===
               item.chartType = 'scatter';
-
-              const monthNames = [
-                'J',
-                'F',
-                'M',
-                'A',
-                'M',
-                'J',
-                'J',
-                'A',
-                'S',
-                'O',
-                'N',
-                'D',
-              ];
 
               // ✅ Tìm min/max và set màu ngay trong dataset
               let minIndex = 0,
@@ -477,36 +505,60 @@ export class HdsComponent implements OnInit {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: function (context: any) {
-                        return `Tháng ${context.raw.x}: ${context.raw.y}`;
-                      },
-                    },
-                  },
+                  tooltip: this.tooltipOpts,
                 },
                 scales: {
-                  x: {
-                    type: 'linear',
-                    min: 1,
-                    max: 12,
-                    ticks: {
-                      stepSize: 1,
-                      callback: function (value: any) {
-                        return value >= 1 && value <= 12
-                          ? monthNames[value - 1]
-                          : '';
-                      },
-                    },
-                  },
+                  x: this.xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
                   },
                 },
               };
+            } else if (
+              Utils.inArray(item._id.sample_type_group_id, initCharts.barCharts)
+            ) {
+              // === 3. bar chart ===
+              const barData = datas.map((v) => (v !== null ? v : 0));
+
+              item.dataCharts = [
+                {
+                  type: 'bar',
+                  label: item._id.sample_type_group_id,
+                  data: barData,
+                  backgroundColor: item.items[0].chart_icon_color[0],
+                  borderColor: item.items[0].chart_icon_color[0],
+                  borderWidth: 1,
+                },
+              ];
+
+              item.chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: this.tooltipOpts,
+                },
+                scales: {
+                  x: {
+                    ...this.xScale,
+                    grid: {
+                      display: false,
+                    },
+                  },
+                  y: {
+                    min: cstMin < 0 ? 0 : cstMin - 30,
+                    max: cstMax + 30,
+                    ticks: {
+                      beginAtZero: true,
+                    },
+                  },
+                },
+              };
+
+              item.chartType = 'bar';
             } else {
-              // === 3. scatter chart ===
+              // === 4. scatter chart ===
               item.chartType = 'scatter';
               item.dataCharts = [
                 {
@@ -519,34 +571,13 @@ export class HdsComponent implements OnInit {
               ];
               item.chartOptions = {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
+                  tooltip: this.tooltipOpts,
                 },
                 scales: {
-                  x: {
-                    min: 1,
-                    max: 12,
-                    ticks: {
-                      callback: (value: any) => {
-                        const monthLabels = [
-                          'J',
-                          'F',
-                          'M',
-                          'A',
-                          'M',
-                          'J',
-                          'J',
-                          'A',
-                          'S',
-                          'O',
-                          'N',
-                          'D',
-                        ];
-                        return monthLabels[+value - 1] ?? value;
-                      },
-                      stepSize: 1,
-                    },
-                  },
+                  x: this.xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
@@ -554,7 +585,7 @@ export class HdsComponent implements OnInit {
                 },
               };
             }
-            console.log('charts item:', item);
+            //console.log('charts item:', item);
             this.pushChartFixedPosition(item);
           }
           this.cdr.detectChanges();
