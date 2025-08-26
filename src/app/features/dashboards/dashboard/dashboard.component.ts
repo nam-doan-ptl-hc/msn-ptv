@@ -215,6 +215,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       : this.dataSource.data.forEach((row) => this.selection.select(row));
   }
 
+  getStringTimeSync(date: Date | string): string {
+    return Utils.getStringTimeSync(date);
+  }
+
   getHdsOfRecord(data: DashboardRow): string {
     const attributes = data?.smartlist?.extended_ui_attributes;
     const userHealthData = attributes?.user_health_data;

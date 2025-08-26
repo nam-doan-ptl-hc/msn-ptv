@@ -1,9 +1,30 @@
 <div id="wrapper-header">
-  <div class="container justify-content-center">
-    <div class="login-header">
-      <a href="/" class="login-logo-temp">
-        <img src="/assets/images/logo-patient.svg" />
-      </a>
+  <div class="login-header">
+    <a href="/" class="login-logo-temp">
+      <img src="/assets/images/logo-patient.svg" />
+    </a>
+  </div>
+  <div
+    class="item-nav account icon-show"
+    md-labeled-by-tooltip="md-tooltip-31"
+    style="cursor: pointer"
+  >
+    <p class="icon account-name icon-avatar">{{ checkAvatarAccount() }}</p>
+    <span class="text label ng-scope" style="cursor: pointer">ME</span>
+    <div class="wrapper-account">
+      <span class="ar1"></span><span class="ar2"></span>
+      <div class="menu-account">
+        <p class="avatar-user">{{ checkAvatarAccount() }}</p>
+        <div class="d-flex justify-content-center align-items-center">
+          <div class="info-user">
+            <p class="name-user">{{ getNameAccount() }}</p>
+            <p class="email-user">{{ user.email }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="actions-box">
+        <button class="btn-logout" (click)="logOut()">Log Out</button>
+      </div>
     </div>
   </div>
 </div>

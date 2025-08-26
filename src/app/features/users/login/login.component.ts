@@ -87,7 +87,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       domain_name: 'www.doctellaqa.com',
     };
 
-    this.api.postFormEncoded('signin', body).subscribe({
+    this.api.postFormEncoded('/signin', body).subscribe({
       next: (res) => {
         if (res.code != 0) {
           this.snackBar.open(res.msg, 'x', {

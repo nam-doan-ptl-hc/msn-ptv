@@ -88,7 +88,11 @@
             </p>
             <p class="d-flex p-date">
               <i class="material-icons">sync</i>
-              <span>Apr 09, 15:12</span>
+              <span>{{
+                getStringTimeSync(
+                  element?.patient_ref?.extended_attributes?.hds_last_sync
+                )
+              }}</span>
             </p>
           </a>
           <ng-template #noData

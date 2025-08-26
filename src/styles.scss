@@ -26,3 +26,13 @@ a {
   background: none !important;
   --mat-button-text-state-layer-color: transparent !important;
 }
+
+.mat-datepicker-content {
+  position: fixed;
+  right: 0px;
+  background: #fff !important;
+  top: 105px;
+}
+.mat-date-range-input-separator {
+  display: none !important;
+}

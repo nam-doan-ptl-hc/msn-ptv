@@ -1,3 +1,49 @@
+<div id="hds-header" class="header">
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <select class="toolbar-select">
+        <option>HEALTH DATA DASHBOARD</option>
+        <option>ANOTHER DASHBOARD</option>
+      </select>
+    </div>
+
+    <div class="toolbar-center">
+      <button>View Data</button>
+      <button (click)="loadData()">Refresh</button>
+    </div>
+
+    <div class="toolbar-right">
+      <button class="date-btn">{{ textBtn }}</button>
+      <!-- dropdown menu -->
+      <div class="dropdown">
+        <ul>
+          <li (click)="pickDate(1)">TODAY</li>
+          <li (click)="pickDate(2)">THIS WEEK</li>
+          <li (click)="pickDate(3)">THIS MONTH</li>
+          <li (click)="pickDate(4)">LAST 30 DAYS</li>
+          <li (click)="pickDate(5)">THIS YEAR</li>
+          <li (click)="picker.open()">CUSTOM RANGE</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <!-- Date range picker -->
+  <mat-date-range-input [rangePicker]="picker" [formGroup]="range">
+    <input
+      type="hidden"
+      matStartDate
+      formControlName="start"
+      placeholder="From date"
+    />
+    <input
+      type="hidden"
+      matEndDate
+      formControlName="end"
+      placeholder="To date"
+    />
+  </mat-date-range-input>
+  <mat-date-range-picker #picker></mat-date-range-picker>
+</div>
 <div id="wrapper-hds">
   <div class="row">
     <div class="col-sm-4 div-snapshot">
@@ -9,25 +55,11 @@
           />
           <div class="clearfix u-info">
             <p class="title ng-binding">Duyen Duyen</p>
-            <p
-              class="date ng-binding"
-              ng-show="accountPatient.email != '' &amp;&amp; accountPatient.fullName !='' "
-              aria-hidden="false"
-            >
-              duyendm@doctella.com
-            </p>
-            <p
-              class="date ng-binding ng-hide"
-              ng-show="accountPatient.phone != '' &amp;&amp; accountPatient.fullName !='' "
-              aria-hidden="true"
-            ></p>
+            <p class="date ng-binding">duyendm@doctella.com</p>
+            <p class="date ng-binding ng-hide"></p>
           </div>
         </div>
-        <div
-          class="pad20 pab0 padt0 ng-scope"
-          ng-if="!isCaregiver"
-          style="cursor: pointer"
-        >
+        <div class="pad20 pab0 padt0 ng-scope" style="cursor: pointer">
           <div
             class="bottom-card layout-align-space-between-center layout-row"
             layout="row"
@@ -53,23 +85,28 @@
     </div>
     <div class="col-sm-8">
       <div class="row">
+        @for (item of dataSnapshots; track item.id) {
         <div class="col-sm-4 div-snapshot">
           <div class="pad20 pab0 md-card" style="cursor: pointer">
             <div class="row-top" style="cursor: pointer">
               <div class="img-card">
-                <img src="/assets/images/icon-sample-type/ic-weight-st.svg" />
+                <img src="{{ item.src }}" />
               </div>
               <div class="align-right" style="cursor: pointer">
                 <p class="p-title-snapshot ng-binding" style="cursor: pointer">
-                  Weight
+                  {{
+                    (item.id == "BMI" ? "Body Mass Index" : item.id) | uppercase
+                  }}
                 </p>
                 <p class="s26 ng-scope" style="cursor: pointer">
                   <span
                     class="card-value-data ng-binding"
                     style="cursor: pointer"
-                    >98.12</span
+                    >{{ item.value }}</span
                   >
-                  <span class="unit ng-binding">lbs</span>
+                  @if(item.id != 'HEIGHT') {
+                  <span class="unit ng-binding">{{ item.unit }}</span
+                  >}
                 </p>
               </div>
             </div>
@@ -81,13 +118,13 @@
             >
               <div
                 class="time-snap"
-                aria-label="Synced from patient's device on: Apr 09, 2025 15:07:20"
                 md-labeled-by-tooltip="md-tooltip-131"
                 style="cursor: pointer"
               >
                 <i class="material-icons">sync</i>
                 <span class="last-sync-time ng-binding" style="cursor: pointer"
-                  >Last synced on Apr 09, 2025 15:07:20</span
+                  >Last synced on
+                  {{ getStringTimeSync(item.sync_date_utc) }}</span
                 >
               </div>
               <div class="snap-view" style="cursor: pointer">
@@ -106,126 +143,23 @@
             </div>
           </div>
         </div>
-        <div class="col-sm-4 div-snapshot">
-          <div class="pad20 pab0 md-card" style="cursor: pointer">
-            <div class="row-top" style="cursor: pointer">
-              <div class="img-card">
-                <img src="/assets/images/icon-sample-type/ic-bmi-st.svg" />
-              </div>
-              <div class="align-right" style="cursor: pointer">
-                <p class="p-title-snapshot ng-binding" style="cursor: pointer">
-                  Body Mass Index
-                </p>
-                <p class="s26 ng-scope" style="cursor: pointer">
-                  <span
-                    class="card-value-data ng-binding"
-                    style="cursor: pointer"
-                    >15.78</span
-                  >
-                  <span class="unit ng-binding">BMI</span>
-                </p>
-              </div>
-            </div>
-            <div
-              class="bottom-card layout-align-space-between-center layout-row"
-              layout="row"
-              layout-align="space-between center"
-              style="cursor: pointer"
-            >
-              <div
-                class="time-snap"
-                aria-label="Synced from patient's device on: Apr 09, 2025 15:07:20"
-                md-labeled-by-tooltip="md-tooltip-131"
-                style="cursor: pointer"
-              >
-                <i class="material-icons">sync</i>
-                <span class="last-sync-time ng-binding" style="cursor: pointer"
-                  >Last synced on Apr 09, 2025 15:07:20</span
-                >
-              </div>
-              <div class="snap-view" style="cursor: pointer">
-                <button
-                  class="md-button ng-scope md-ink-ripple"
-                  type="button"
-                  ng-transclude=""
-                  style="cursor: pointer"
-                >
-                  <span class="ng-scope"
-                    ><span class="md-caption ng-binding" style="cursor: pointer"
-                      >View Data ></span
-                    >
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-sm-4 div-snapshot">
-          <div class="pad20 pab0 md-card" style="cursor: pointer">
-            <div class="row-top" style="cursor: pointer">
-              <div class="img-card">
-                <img src="/assets/images/icon-sample-type/ic-height-st.svg" />
-              </div>
-              <div class="align-right" style="cursor: pointer">
-                <p class="p-title-snapshot ng-binding" style="cursor: pointer">
-                  Height
-                </p>
-                <p class="s26 ng-scope" style="cursor: pointer">
-                  <span
-                    class="card-value-data ng-binding"
-                    style="cursor: pointer"
-                    >5' 6"</span
-                  >
-                </p>
-              </div>
-            </div>
-            <div
-              class="bottom-card layout-align-space-between-center layout-row"
-              layout="row"
-              layout-align="space-between center"
-              style="cursor: pointer"
-            >
-              <div
-                class="time-snap"
-                aria-label="Synced from patient's device on: Apr 09, 2025 15:07:20"
-                md-labeled-by-tooltip="md-tooltip-131"
-                style="cursor: pointer"
-              >
-                <i class="material-icons">sync</i>
-                <span class="last-sync-time ng-binding" style="cursor: pointer"
-                  >Last synced on Apr 09, 2025 15:07:20</span
-                >
-              </div>
-              <div class="snap-view" style="cursor: pointer">
-                <button
-                  class="md-button ng-scope md-ink-ripple"
-                  type="button"
-                  style="cursor: pointer"
-                >
-                  <span class="ng-scope"
-                    ><span class="md-caption ng-binding" style="cursor: pointer"
-                      >View Data ></span
-                    >
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        }
       </div>
     </div>
   </div>
   <ng-container *ngIf="isBrowser">
+    @for (group of chunkedSampleTypes; track $index) {
     <div class="row row-chart">
+      @for (item of group; track $index) {
       <div class="col-sm-4 d-item-chart">
         <div class="md-card">
           <div class="d-flex div-title-chart">
             <div class="d-flex">
               <img
                 class="img-icon"
-                src="/assets/images/icon-sample-type/ic-o2s-st.svg"
+                src="/assets/images/icon-sample-type/{{ item.iconChart }}"
               />
-              <h4 class="title-chart">Oxygen Saturation</h4>
+              <h4 class="title-chart">{{ item.items[0].name }}</h4>
             </div>
             <div class="content-r ng-scope">
               <span
@@ -233,80 +167,59 @@
                 layout="row"
                 layout-align="space-between center"
               >
+                @if (item?.avg) {
                 <span class="card-hd-text ng-binding">avg</span>
-                <span class="s24 ng-binding">71.934</span
-                ><span class="unit ng-binding">lbs</span>
+                <span class="s24 ng-binding">{{ item?.avg }}</span>
+                <span class="unit ng-binding">{{
+                  item.items[0].primary_unit
+                }}</span>
+                }
               </span>
             </div>
           </div>
-          <canvas
-            baseChart
-            [data]="{ labels: labels, datasets: oxygenData }"
-            [options]="oxygenOptions"
-            [type]="'line'"
-          ></canvas>
-        </div>
-      </div>
-      <div class="col-sm-4 d-item-chart">
-        <div class="md-card">
-          <div class="d-flex div-title-chart">
-            <div class="d-flex">
-              <img
-                class="img-icon"
-                src="/assets/images/icon-sample-type/ic-hr-st.svg"
-              />
-              <h4 class="title-chart">Heart Rate</h4>
-            </div>
-            <div class="content-r ng-scope">
-              <span
-                class="tool-r layout-align-space-between-center layout-row"
-                layout="row"
-                layout-align="space-between center"
-              >
-                <span class="card-hd-text ng-binding">avg</span>
-                <span class="s24 ng-binding">71.934</span
-                ><span class="unit ng-binding">lbs</span>
-              </span>
-            </div>
+          <div class="wrapper-chart">
+            @if (item.dataCharts[0]?.data?.length > 0) {
+            <canvas
+              baseChart
+              [data]="{ labels: labels, datasets: item.dataCharts }"
+              [options]="item.chartOptions"
+              [type]="item.chartType"
+              style="display: block; height: 300px; width: 100%"
+            ></canvas>
+            } @else {
+            <p>No data available for selected period</p>
+            }
           </div>
-          <canvas
-            baseChart
-            [data]="{ datasets: heartData }"
-            [options]="heartOptions"
-            [type]="'scatter'"
-          ></canvas>
-        </div>
-      </div>
-      <div class="col-sm-4 d-item-chart">
-        <div class="md-card">
-          <div class="d-flex div-title-chart">
-            <div class="d-flex">
-              <img
-                class="img-icon"
-                src="/assets/images/icon-sample-type/ic-r2-st.svg"
-              />
-              <h4 class="title-chart">Respiration Rate Pleth</h4>
+          <div class="d-bottom-chart">
+            @if (item.dataCharts[0]?.data?.length > 0) {
+            <div class="d-flex view">
+              <div class="time-snap">
+                <i class="material-icons">sync</i>
+                <span class="last-sync-time ng-binding" style="cursor: pointer"
+                  >Last synced on Aug 08, 2025 08:58:47</span
+                >
+              </div>
+              <div class="snap-view" style="cursor: pointer">
+                <button
+                  class="md-button ng-scope md-ink-ripple"
+                  type="button"
+                  style="cursor: pointer"
+                >
+                  <span class="ng-scope">
+                    <span class="md-caption ng-binding" style="cursor: pointer"
+                      >View Data ></span
+                    >
+                  </span>
+                </button>
+              </div>
             </div>
-            <div class="content-r ng-scope">
-              <span
-                class="tool-r layout-align-space-between-center layout-row"
-                layout="row"
-                layout-align="space-between center"
-              >
-                <span class="card-hd-text ng-binding">avg</span>
-                <span class="s24 ng-binding">71.934</span
-                ><span class="unit ng-binding">lbs</span>
-              </span>
-            </div>
+            }
           </div>
-          <canvas
-            baseChart
-            [data]="{ datasets: respirationData }"
-            [options]="respirationOptions"
-            [type]="'scatter'"
-          ></canvas>
         </div>
       </div>
+      }
     </div>
+
+    }
   </ng-container>
 </div>

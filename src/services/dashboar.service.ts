@@ -26,4 +26,8 @@ export class DashboardService {
   loadHDSsampleTypes(body: any) {
     return this.api.postFormEncoded('/loadHDSsampleTypes', body);
   }
+
+  loadHDSSharedSamples4ChartView(body: any) {
+    return this.api.postFormEncoded('/loadHDSSharedSamples4ChartView', body);
+  }
 }
