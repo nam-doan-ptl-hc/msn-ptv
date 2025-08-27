@@ -25,6 +25,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
+
 // === Plugin hiển thị nhãn "min" và "max" chỉ cho Heart Rate ===
 const minMaxLabelPlugin: Plugin<'scatter'> = {
   id: 'minMaxLabelPlugin',
@@ -77,8 +79,24 @@ const minMaxLabelPlugin: Plugin<'scatter'> = {
     });
   },
 };
-
-Chart.register(...registerables, minMaxLabelPlugin);
+const verticalLinePlugin = {
+  id: 'verticalLinePlugin',
+  afterDraw: (chart: any) => {
+    if (chart.tooltip?._active?.length) {
+      const ctx = chart.ctx;
+      const x = chart.tooltip._active[0].element.x;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, chart.chartArea.top);
+      ctx.lineTo(x, chart.chartArea.bottom);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#000';
+      ctx.stroke();
+      ctx.restore();
+    }
+  },
+};
+Chart.register(...registerables, minMaxLabelPlugin, verticalLinePlugin);
 
 @Component({
   selector: 'hds',
@@ -119,6 +137,7 @@ export class HdsComponent implements OnInit {
     end: new FormControl<Date | null>(null),
   });
   textBtn: string = '';
+  textPickDate = 'today';
   params = {
     dateFrom: '',
     dateTo: '',
@@ -153,18 +172,69 @@ export class HdsComponent implements OnInit {
           Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
           Utils.getDateString(this.params.dateTo, 'M d, yyyy');
-        this.loadData4Charts();
+        this.pickDate(0);
+
+        this.updateXScaleFromParams();
       }
     });
   }
-  pickDate(data: number) {
-    const today = new Date();
+  private updateXScaleFromParams() {
+    const gt = this.params.group_type;
+    if (!this.xScale) this.xScale = {};
 
+    this.xScale.type = 'linear';
+    this.xScale.offset = true;
+    this.xScale.bounds = 'ticks';
+
+    if (gt === 'hour') {
+      this.xScale.min = 0;
+      this.xScale.max = 23;
+    } else if (gt === 'days') {
+      if (this.textPickDate === 'thisWeek') {
+        // THIS WEEK → SUN-SAT
+        this.xScale.type = 'category';
+        this.xScale.labels = this.labels;
+        this.xScale.min = 0;
+        this.xScale.max = 6;
+      } else {
+        // Tháng hoặc 30 ngày
+        this.xScale.min = 1;
+        this.xScale.max = 31;
+      }
+    } else if (gt === 'months') {
+      this.xScale.min = 1;
+      this.xScale.max = 12;
+    }
+
+    if (!this.xScale.ticks) this.xScale.ticks = {};
+    this.xScale.ticks.stepSize = 1;
+  }
+
+  private generateCurrentWeekLabels(): string[] {
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const labels: string[] = [];
+
+    const today = new Date();
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Bắt đầu từ Chủ Nhật
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(firstDayOfWeek);
+      d.setDate(firstDayOfWeek.getDate() + i);
+      labels.push(dayNames[d.getDay()]); // SUN, MON...
+    }
+
+    return labels;
+  }
+  async pickDate(data: number) {
+    const today = new Date();
+    this.charts = [];
     switch (data) {
       case 1: // TODAY
         this.params.dateFrom = this.formatDate(today) + ' 00:00:00';
         this.params.dateTo = this.formatDate(today) + ' 23:59:59';
         this.params.group_type = 'hour';
+        this.textPickDate = 'today';
         break;
 
       case 2: // THIS WEEK
@@ -179,6 +249,7 @@ export class HdsComponent implements OnInit {
         this.params.dateFrom = this.formatDate(startOfWeek) + ' 00:00:00';
         this.params.dateTo = this.formatDate(endOfWeek) + ' 23:59:59';
         this.params.group_type = 'days';
+        this.textPickDate = 'thisWeek';
         break;
 
       case 3: // THIS MONTH
@@ -192,6 +263,7 @@ export class HdsComponent implements OnInit {
         this.params.dateFrom = this.formatDate(startOfMonth) + ' 00:00:00';
         this.params.dateTo = this.formatDate(endOfMonth) + ' 23:59:59';
         this.params.group_type = 'days';
+        this.textPickDate = 'thisMonth';
         break;
 
       case 4: // LAST 30 DAYS
@@ -201,6 +273,7 @@ export class HdsComponent implements OnInit {
         this.params.dateFrom = this.formatDate(thirtyDaysAgo) + ' 00:00:00';
         this.params.dateTo = this.formatDate(today) + ' 23:59:59';
         this.params.group_type = 'days';
+        this.textPickDate = 'last30days';
         break;
 
       case 5: // THIS YEAR
@@ -209,6 +282,7 @@ export class HdsComponent implements OnInit {
         this.params.dateFrom = this.formatDate(startOfYear) + ' 00:00:00';
         this.params.dateTo = this.formatDate(endOfYear) + ' 23:59:59';
         this.params.group_type = 'months';
+        this.textPickDate = 'thisYear';
         break;
     }
     this.charts = [];
@@ -218,8 +292,22 @@ export class HdsComponent implements OnInit {
         : Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
           Utils.getDateString(this.params.dateTo, 'M d, yyyy');
-    this.loadData4Charts();
+    //this.loadData4Charts();
+    // Cập nhật nhãn trục x
+
+    this.labels =
+      data === 2
+        ? this.generateCurrentWeekLabels()
+        : this.generateXAxisLabels();
+    this.updateXScaleFromParams();
+    // Cập nhật tất cả biểu đồ
+    try {
+      await this.loadData4Charts().toPromise();
+    } catch (error) {
+      console.error('Lỗi khi tải dữ liệu:', error);
+    }
   }
+
   private loadData4SnapshotCard(sample_type: any[] = []) {
     const body = {
       token: this.user.token || '',
@@ -277,26 +365,63 @@ export class HdsComponent implements OnInit {
       },
     });
   }
+  generateLabels(): string[] {
+    if (this.textPickDate === 'thisWeek') {
+      return this.labels; // đã chuẩn bị sẵn 7 ngày
+    }
+
+    if (this.params.group_type === 'days') {
+      // Last 30 days
+      const labels: string[] = [];
+      const today = new Date();
+      const start = new Date();
+      start.setDate(today.getDate() - 29); // lùi 29 ngày để đủ 30 ngày (tính cả hôm nay)
+
+      for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        labels.push(`${day}/${month}`);
+      }
+
+      return labels;
+    }
+
+    if (this.params.group_type === 'months') {
+      return initCharts.monthNames; // ['Jan', 'Feb', ... 'Dec']
+    }
+
+    if (this.params.group_type === 'hour') {
+      return Array.from({ length: 24 }, (_, i) => `${i}h`);
+    }
+
+    return [];
+  }
+
   xScale: any = {
-    type: 'linear',
-    offset: true, // căn đều 2 đầu
-    bounds: 'ticks', // ticks chiếm hết trục
-    min: this.params.group_type === 'hour' ? 0 : 1,
-    max:
-      this.params.group_type === 'hour'
-        ? 23
-        : this.params.group_type === 'days'
-        ? 31
-        : 12,
+    type: 'category',
+    offset: true,
+    bounds: 'ticks',
+    labels: this.generateLabels(), // generateLabels trả về list ngày đầy đủ dạng '28/07', '29/07', ...
     ticks: {
       stepSize: 1,
-      callback: (value: any) => {
-        if (this.params.group_type === 'months') {
-          return initCharts.monthNames[value - 1]; // Jan–Dec
-        } else if (this.params.group_type === 'days') {
-          return value; // ngày
-        } else if (this.params.group_type === 'hour') {
-          return value + 'h'; // giờ
+      callback: (value: any, index: number) => {
+        if (this.textPickDate === 'thisYear') {
+          return initCharts.monthNames[index]; // J, F, M...
+        }
+        if (this.textPickDate === 'thisWeek') {
+          return this.labels[index]; // SUN, MON, ...
+        }
+        if (this.params.group_type === 'hour') {
+          return value + 'h';
+        }
+        if (this.textPickDate === 'last30days') {
+          // chỉ lấy ngày (phần số) để hiển thị trên trục
+          const fullDate = this.generateLabels()[index]; // ví dụ '28/07'
+          console.log(fullDate);
+          return fullDate.split('/')[0]; // chỉ lấy '28'
+        }
+        if (this.params.group_type === 'days') {
+          return this.labels[index];
         }
         return value;
       },
@@ -313,8 +438,55 @@ export class HdsComponent implements OnInit {
       },
     },
   };
-  private loadData4Charts() {
-    this.sampleTypes.forEach((item: any) => {
+  generateXAxisLabels() {
+    const groupType = this.params.group_type;
+    let labels: string[] = [];
+
+    if (groupType === 'months') {
+      // Hiển thị các tháng từ J đến D
+      labels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    } else if (groupType === 'days') {
+      // Hiển thị các ngày từ dateFrom đến dateTo
+      const startDate = new Date(this.params.dateFrom);
+      const endDate = new Date(this.params.dateTo);
+
+      if (this.params.dateFrom && this.params.dateTo) {
+        // LAST 30 DAYS: Hiển thị theo thứ tự tăng dần
+        while (startDate <= endDate) {
+          labels.push(startDate.getDate().toString()); // Lấy ngày (1, 2, ..., 30)
+          startDate.setDate(startDate.getDate() + 1); // Tăng ngày lên 1
+        }
+      }
+    } else if (groupType === 'hour') {
+      // Hiển thị các giờ từ 0 đến 24
+      labels = Array.from({ length: 24 }, (_, i) => `${i}h`);
+    }
+
+    return labels;
+  }
+
+  convertServerDayToClient(e: any): {
+    day_of_week: number;
+    day_of_month: number;
+    month: number;
+    year: number;
+  } {
+    // 1. Lấy ngày gốc từ server (theo day_of_year)
+    const utcDate = new Date(Date.UTC(e.year, 0, 1));
+    utcDate.setUTCDate(utcDate.getUTCDate() + e.day - 1);
+
+    // 2. Convert sang giờ local client
+    const localDate = new Date(utcDate);
+
+    return {
+      day_of_week: localDate.getDay(), // 0 = Chủ nhật
+      day_of_month: localDate.getDate(), // Ngày trong tháng
+      month: localDate.getMonth() + 1, // Tháng (JS: 0-11 → +1 để thành 1-12)
+      year: localDate.getFullYear(),
+    };
+  }
+  private loadData4Charts(): Observable<void> {
+    const apiCalls = this.sampleTypes.map((item: any) => {
       const body = {
         token: this.user.token || '',
         req_time: new Date().setHours(0, 0, 0, 0),
@@ -340,8 +512,8 @@ export class HdsComponent implements OnInit {
         body.body_type = 'last';
         body.top_type = 'last';
       }
-      this.dashboardService.loadHDSSharedSamples4ChartView(body).subscribe({
-        next: (res) => {
+      return this.dashboardService.loadHDSSharedSamples4ChartView(body).pipe(
+        tap((res) => {
           if (res.code != 0) {
             this.snackBar.open(res.msg, 'x', {
               duration: 3000,
@@ -368,18 +540,31 @@ export class HdsComponent implements OnInit {
                 if (this.params.group_type === 'months') {
                   datas[e._id.month] = e.value;
                 } else if (this.params.group_type === 'days') {
-                  datas[e._id.day] = e.value; // ngày trong tháng
+                  const localDay = this.convertServerDayToClient(e._id);
+                  if (this.textPickDate === 'thisWeek') {
+                    const dow = localDay.day_of_week;
+                    datas[dow] = e.value;
+                  } else {
+                    const dom = localDay.day_of_month;
+                    datas[dom] = e.value;
+                  }
                 } else if (this.params.group_type === 'hour') {
-                  datas[e._id.hour] = e.value; // giờ trong ngày
+                  datas[e._id.hour] = e.value; // Giờ trong ngày
                 }
               } else {
                 // scatter chart
                 if (this.params.group_type === 'months') {
                   data.x = e._id.month;
                 } else if (this.params.group_type === 'days') {
-                  data.x = e._id.day;
+                  const localDay = this.convertServerDayToClient(e._id);
+                  if (this.textPickDate === 'thisWeek') {
+                    const dow = localDay.day_of_week;
+                    datas[dow] = e.value;
+                  } else {
+                    data.x = localDay.day_of_month;
+                  }
                 } else if (this.params.group_type === 'hour') {
-                  data.x = e._id.hour;
+                  data.x = e._id.hour; // Giờ trong ngày
                 }
                 data.y = e.value;
                 datas.push(data);
@@ -413,14 +598,14 @@ export class HdsComponent implements OnInit {
                 initCharts.lineCharts
               )
             ) {
-              //
-              console.log('datas chart line', datas);
-
-              // Chuẩn hóa data: chuyển null -> bỏ
-              const scatterData = datas
-                .map((v, i) => (v !== null ? { x: i, y: v } : null))
-                .filter((v) => v);
-
+              // 1.=== line chart ===
+              const scatterData =
+                this.textPickDate === 'thisWeek'
+                  ? datas
+                  : datas
+                      .map((v, i) => (v !== null ? { x: i, y: v } : null))
+                      .filter((v) => v);
+              console.log('scatterData', scatterData);
               item.dataCharts = [
                 {
                   type: 'line',
@@ -479,7 +664,7 @@ export class HdsComponent implements OnInit {
                   }
                 });
               }
-
+              console.log('datas', datas);
               item.dataCharts = [
                 {
                   label: item._id.sample_type_group_id,
@@ -586,15 +771,42 @@ export class HdsComponent implements OnInit {
               };
             }
             //console.log('charts item:', item);
+            // ĐẢM BẢO item có thuộc tính data với cấu trúc đúng
+            item.data = {
+              labels: [], // Khởi tạo mảng labels rỗng
+              datasets: item.dataCharts,
+            };
+
+            // ĐẢM BẢO item có phương thức update
+            item.update = function () {
+              // Logic update sẽ được thêm sau
+            };
+
             this.pushChartFixedPosition(item);
           }
           this.cdr.detectChanges();
+        }),
+        catchError((err) => {
+          console.error('Lỗi khi tải dashboard:', err);
+          return of(null);
+        })
+      );
+
+      /* this.dashboardService.loadHDSSharedSamples4ChartView(body).subscribe({
+        next: (res) => {
+          
         },
         error: (err) => {
           console.error('Lỗi khi tải dashboard:', err);
         },
-      });
+      }); */
     });
+    return forkJoin(apiCalls).pipe(
+      tap(() => {
+        this.cdr.detectChanges();
+      }),
+      map(() => void 0)
+    );
     console.log('charts:', this.charts);
   }
   private normalizePos(pos: any): number {
@@ -671,7 +883,7 @@ export class HdsComponent implements OnInit {
           }));
         this.dataSnapshots = sample_type;
         this.loadData4SnapshotCard(sample_type);
-        this.loadData4Charts();
+        this.pickDate(1);
       },
       error: (err) => {
         console.error('Lỗi khi tải dashboard:', err);
