@@ -198,6 +198,10 @@ export class HdsComponent implements OnInit {
         this.xScale.max = 6;
       } else {
         // Tháng hoặc 30 ngày
+        if (this.textPickDate === 'last30days') {
+          this.xScale.type = 'category';
+          this.xScale.labels = this.generateLabels(); // luôn là mảng 30 ngày liên tiếp
+        }
         this.xScale.min = 1;
         this.xScale.max = 31;
       }
@@ -268,7 +272,7 @@ export class HdsComponent implements OnInit {
 
       case 4: // LAST 30 DAYS
         const thirtyDaysAgo = new Date(today);
-        thirtyDaysAgo.setDate(today.getDate() - 30);
+        thirtyDaysAgo.setDate(today.getDate() - 29);
 
         this.params.dateFrom = this.formatDate(thirtyDaysAgo) + ' 00:00:00';
         this.params.dateTo = this.formatDate(today) + ' 23:59:59';
@@ -300,6 +304,7 @@ export class HdsComponent implements OnInit {
         ? this.generateCurrentWeekLabels()
         : this.generateXAxisLabels();
     this.updateXScaleFromParams();
+
     // Cập nhật tất cả biểu đồ
     try {
       await this.loadData4Charts().toPromise();
@@ -367,27 +372,28 @@ export class HdsComponent implements OnInit {
   }
   generateLabels(): string[] {
     if (this.textPickDate === 'thisWeek') {
-      return this.labels; // đã chuẩn bị sẵn 7 ngày
+      return this.labels;
     }
 
-    if (this.params.group_type === 'days') {
-      // Last 30 days
+    if (
+      this.textPickDate === 'last30days' ||
+      this.params.group_type === 'days'
+    ) {
       const labels: string[] = [];
       const today = new Date();
       const start = new Date();
-      start.setDate(today.getDate() - 29); // lùi 29 ngày để đủ 30 ngày (tính cả hôm nay)
+      start.setDate(today.getDate() - 29);
 
       for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         labels.push(`${day}/${month}`);
       }
-
       return labels;
     }
 
     if (this.params.group_type === 'months') {
-      return initCharts.monthNames; // ['Jan', 'Feb', ... 'Dec']
+      return initCharts.monthNames;
     }
 
     if (this.params.group_type === 'hour') {
@@ -401,10 +407,13 @@ export class HdsComponent implements OnInit {
     type: 'category',
     offset: true,
     bounds: 'ticks',
-    labels: this.generateLabels(), // generateLabels trả về list ngày đầy đủ dạng '28/07', '29/07', ...
+    labels: this.generateLabels(),
     ticks: {
       stepSize: 1,
       callback: (value: any, index: number) => {
+        if (this.textPickDate === 'last30days') {
+          return this.labels[index];
+        }
         if (this.textPickDate === 'thisYear') {
           return initCharts.monthNames[index]; // J, F, M...
         }
@@ -413,12 +422,6 @@ export class HdsComponent implements OnInit {
         }
         if (this.params.group_type === 'hour') {
           return value + 'h';
-        }
-        if (this.textPickDate === 'last30days') {
-          // chỉ lấy ngày (phần số) để hiển thị trên trục
-          const fullDate = this.generateLabels()[index]; // ví dụ '28/07'
-          console.log(fullDate);
-          return fullDate.split('/')[0]; // chỉ lấy '28'
         }
         if (this.params.group_type === 'days') {
           return this.labels[index];
@@ -526,6 +529,7 @@ export class HdsComponent implements OnInit {
           let datas: any[] = [],
             min = 0,
             max = 0;
+
           if (!Utils.isEmpty(res.data)) {
             res.data[0].items.forEach((e: any) => {
               let data: any = {};
@@ -544,6 +548,10 @@ export class HdsComponent implements OnInit {
                   if (this.textPickDate === 'thisWeek') {
                     const dow = localDay.day_of_week;
                     datas[dow] = e.value;
+                  } else if (this.textPickDate === 'last30days') {
+                    const dayStr = localDay.day_of_month.toString(); // KHÔNG padStart
+                    const idx = this.labels.indexOf(dayStr);
+                    if (idx !== -1) datas[idx] = e.value; // <-- đặt đúng ô theo label
                   } else {
                     const dom = localDay.day_of_month;
                     datas[dom] = e.value;
@@ -560,6 +568,10 @@ export class HdsComponent implements OnInit {
                   if (this.textPickDate === 'thisWeek') {
                     const dow = localDay.day_of_week;
                     datas[dow] = e.value;
+                  } else if (this.textPickDate === 'last30days') {
+                    const dayStr = localDay.day_of_month.toString(); // KHÔNG padStart
+                    const idx = this.labels.indexOf(dayStr);
+                    if (idx !== -1) data.x = e.value;
                   } else {
                     data.x = localDay.day_of_month;
                   }
@@ -599,12 +611,20 @@ export class HdsComponent implements OnInit {
               )
             ) {
               // 1.=== line chart ===
-              const scatterData =
-                this.textPickDate === 'thisWeek'
-                  ? datas
-                  : datas
-                      .map((v, i) => (v !== null ? { x: i, y: v } : null))
-                      .filter((v) => v);
+              console.log('datas', datas);
+              let scatterData: any = [];
+              if (this.textPickDate === 'last30days') {
+                for (let i = 0; i < this.labels.length; i++) {
+                  scatterData.push(datas[i] ?? null); // ✅ không shift index
+                }
+              } else if (this.textPickDate === 'thisWeek') {
+                scatterData = datas;
+              } else {
+                scatterData = datas
+                  .map((v, i) => (v !== null ? { x: i, y: v } : null))
+                  .filter((v) => v);
+              }
+              console.log('this.labels', this.labels);
               console.log('scatterData', scatterData);
               item.dataCharts = [
                 {
@@ -651,8 +671,8 @@ export class HdsComponent implements OnInit {
               let minIndex = 0,
                 maxIndex = 0;
               if (datas.length > 0) {
-                let min = datas[0].y,
-                  max = datas[0].y;
+                let min = 0,
+                  max = 0;
                 datas.forEach((d, idx) => {
                   if (d.y < min) {
                     min = d.y;
