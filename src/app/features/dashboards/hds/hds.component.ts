@@ -9,13 +9,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../../services/AuthService';
 import { BaseChartDirective } from 'ng2-charts';
-import {
-  Chart,
-  ChartOptions,
-  ChartDataset,
-  registerables,
-  Plugin,
-} from 'chart.js';
+import { Chart, registerables } from 'chart.js';
 import { DashboardService } from '../../../../services/dashboar.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Utils } from '../../../utils/utils';
@@ -26,76 +20,11 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
+import {
+  minMaxLabelPlugin,
+  verticalLinePlugin,
+} from '../../../../plugins/chart-plugins';
 
-// === Plugin hiển thị nhãn "min" và "max" chỉ cho Heart Rate ===
-const minMaxLabelPlugin: Plugin<'scatter'> = {
-  id: 'minMaxLabelPlugin',
-  afterDatasetsDraw(chart) {
-    const ctx = chart.ctx;
-
-    chart.data.datasets.forEach((dataset: any, i: number) => {
-      if (
-        dataset.type !== 'scatter' ||
-        !Utils.inArray(dataset.label, initCharts.minMaxCharts)
-      ) {
-        return;
-      }
-
-      const data = dataset.data as { x: number; y: number }[];
-      if (!data.length) return;
-
-      const min = data.reduce((a, b) => (a.y < b.y ? a : b));
-      const max = data.reduce((a, b) => (a.y > b.y ? a : b));
-
-      const meta = chart.getDatasetMeta(i);
-      const minIndex = data.findIndex((d) => d === min);
-      const maxIndex = data.findIndex((d) => d === max);
-
-      const minPoint = meta.data[minIndex];
-      const maxPoint = meta.data[maxIndex];
-
-      // ✅ Chỉ vẽ label
-      ctx.save();
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'red';
-
-      if (minPoint) {
-        ctx.fillText(
-          `Min ${Utils.roundDecimals(min?.y, 1)}`,
-          minPoint.x,
-          minPoint.y + 20
-        );
-      }
-      if (maxPoint) {
-        ctx.fillText(
-          `Max ${Utils.roundDecimals(max?.y, 1)}`,
-          maxPoint.x,
-          maxPoint.y - 10
-        );
-      }
-
-      ctx.restore();
-    });
-  },
-};
-const verticalLinePlugin = {
-  id: 'verticalLinePlugin',
-  afterDraw: (chart: any) => {
-    if (chart.tooltip?._active?.length) {
-      const ctx = chart.ctx;
-      const x = chart.tooltip._active[0].element.x;
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(x, chart.chartArea.top);
-      ctx.lineTo(x, chart.chartArea.bottom);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#000';
-      ctx.stroke();
-      ctx.restore();
-    }
-  },
-};
 Chart.register(...registerables, minMaxLabelPlugin, verticalLinePlugin);
 
 @Component({
@@ -172,9 +101,9 @@ export class HdsComponent implements OnInit {
           Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
           Utils.getDateString(this.params.dateTo, 'M d, yyyy');
+        this.params.group_type = 'days';
+        this.textPickDate = 'customDate';
         this.pickDate(0);
-
-        this.updateXScaleFromParams();
       }
     });
   }
@@ -198,12 +127,17 @@ export class HdsComponent implements OnInit {
         this.xScale.max = 6;
       } else {
         // Tháng hoặc 30 ngày
-        if (this.textPickDate === 'last30days') {
-          this.xScale.type = 'category';
-          this.xScale.labels = this.generateLabels(); // luôn là mảng 30 ngày liên tiếp
+        if (this.textPickDate === 'thisMonth') {
+          this.xScale.min = 1;
+          this.xScale.max = 31;
+        } else {
+          const startDate = new Date(this.params.dateFrom);
+          const endDate = new Date(this.params.dateTo);
+          const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          this.xScale.min = 1;
+          this.xScale.max = diffDays;
         }
-        this.xScale.min = 1;
-        this.xScale.max = 31;
       }
     } else if (gt === 'months') {
       this.xScale.min = 1;
@@ -296,13 +230,8 @@ export class HdsComponent implements OnInit {
         : Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
           ' - ' +
           Utils.getDateString(this.params.dateTo, 'M d, yyyy');
-    //this.loadData4Charts();
-    // Cập nhật nhãn trục x
 
-    this.labels =
-      data === 2
-        ? this.generateCurrentWeekLabels()
-        : this.generateXAxisLabels();
+    this.labels = this.generateXAxisLabels();
     this.updateXScaleFromParams();
 
     // Cập nhật tất cả biểu đồ
@@ -370,44 +299,11 @@ export class HdsComponent implements OnInit {
       },
     });
   }
-  generateLabels(): string[] {
-    if (this.textPickDate === 'thisWeek') {
-      return this.labels;
-    }
-
-    if (
-      this.textPickDate === 'last30days' ||
-      this.params.group_type === 'days'
-    ) {
-      const labels: string[] = [];
-      const today = new Date();
-      const start = new Date();
-      start.setDate(today.getDate() - 29);
-
-      for (let d = new Date(start); d <= today; d.setDate(d.getDate() + 1)) {
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        labels.push(`${day}/${month}`);
-      }
-      return labels;
-    }
-
-    if (this.params.group_type === 'months') {
-      return initCharts.monthNames;
-    }
-
-    if (this.params.group_type === 'hour') {
-      return Array.from({ length: 24 }, (_, i) => `${i}h`);
-    }
-
-    return [];
-  }
 
   xScale: any = {
     type: 'category',
-    offset: true,
+    offset: false,
     bounds: 'ticks',
-    labels: this.generateLabels(),
     ticks: {
       stepSize: 1,
       callback: (value: any, index: number) => {
@@ -447,8 +343,11 @@ export class HdsComponent implements OnInit {
 
     if (groupType === 'months') {
       // Hiển thị các tháng từ J đến D
-      labels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+      return initCharts.monthNames;
     } else if (groupType === 'days') {
+      if (this.textPickDate === 'thisWeek') {
+        return this.generateCurrentWeekLabels();
+      }
       // Hiển thị các ngày từ dateFrom đến dateTo
       const startDate = new Date(this.params.dateFrom);
       const endDate = new Date(this.params.dateTo);
@@ -467,7 +366,9 @@ export class HdsComponent implements OnInit {
 
     return labels;
   }
-
+  checkHasItemInChart(data: any[]) {
+    return data.some((item) => item.y !== null && item.y !== undefined);
+  }
   convertServerDayToClient(e: any): {
     day_of_week: number;
     day_of_month: number;
@@ -486,6 +387,58 @@ export class HdsComponent implements OnInit {
       day_of_month: localDate.getDate(), // Ngày trong tháng
       month: localDate.getMonth() + 1, // Tháng (JS: 0-11 → +1 để thành 1-12)
       year: localDate.getFullYear(),
+    };
+  }
+  mapDataToXY(items: any[]): { x: string | number; y: number }[] {
+    const datas: { x: string | number; y: number }[] = [];
+    items.forEach((e: any) => {
+      const data: { x: string | number; y: number } = { x: '', y: e.value };
+
+      if (this.params.group_type === 'months') {
+        // x có thể là số tháng hoặc label string nếu cần
+        data.x = e._id.month.toString();
+      } else if (this.params.group_type === 'days') {
+        const localDay = this.convertServerDayToClient(e._id); // giả sử function của Nam
+        if (this.textPickDate === 'thisWeek') {
+          // day_of_week = 0(SUN) → 6(SAT)
+          data.x = this.labels[localDay.day_of_week]; // string label
+        } else {
+          const dayStr = localDay.day_of_month.toString();
+          if (this.labels.includes(dayStr)) {
+            data.x = dayStr; // string label
+          }
+        }
+      } else if (this.params.group_type === 'hour') {
+        data.x = e._id.hour; // 0-23
+      }
+
+      datas.push(data);
+    });
+
+    return datas;
+  }
+  private buildChartData(datas: any[]): { data: any[]; xScale: any } {
+    if (
+      this.textPickDate === 'last30days' ||
+      this.textPickDate === 'customDate'
+    ) {
+      const scatterDataIndex = this.labels.map((lbl, idx) => {
+        const found = datas.find((d) => d.x === lbl);
+        return { x: idx, y: found ? found.y : null };
+      });
+      return {
+        data: scatterDataIndex,
+        xScale: {
+          type: 'category',
+          labels: this.labels,
+          offset: false,
+          ticks: { stepSize: 1 },
+        },
+      };
+    }
+    return {
+      data: datas.map((d) => ({ x: d.x, y: d.y })),
+      xScale: this.xScale,
     };
   }
   private loadData4Charts(): Observable<void> {
@@ -531,64 +484,11 @@ export class HdsComponent implements OnInit {
             max = 0;
 
           if (!Utils.isEmpty(res.data)) {
-            res.data[0].items.forEach((e: any) => {
-              let data: any = {};
-
-              if (
-                Utils.inArray(
-                  item._id.sample_type_group_id,
-                  initCharts.lineCharts
-                )
-              ) {
-                // line chart kiểu theo tháng
-                if (this.params.group_type === 'months') {
-                  datas[e._id.month] = e.value;
-                } else if (this.params.group_type === 'days') {
-                  const localDay = this.convertServerDayToClient(e._id);
-                  if (this.textPickDate === 'thisWeek') {
-                    const dow = localDay.day_of_week;
-                    datas[dow] = e.value;
-                  } else if (this.textPickDate === 'last30days') {
-                    const dayStr = localDay.day_of_month.toString(); // KHÔNG padStart
-                    const idx = this.labels.indexOf(dayStr);
-                    if (idx !== -1) datas[idx] = e.value; // <-- đặt đúng ô theo label
-                  } else {
-                    const dom = localDay.day_of_month;
-                    datas[dom] = e.value;
-                  }
-                } else if (this.params.group_type === 'hour') {
-                  datas[e._id.hour] = e.value; // Giờ trong ngày
-                }
-              } else {
-                // scatter chart
-                if (this.params.group_type === 'months') {
-                  data.x = e._id.month;
-                } else if (this.params.group_type === 'days') {
-                  const localDay = this.convertServerDayToClient(e._id);
-                  if (this.textPickDate === 'thisWeek') {
-                    const dow = localDay.day_of_week;
-                    datas[dow] = e.value;
-                  } else if (this.textPickDate === 'last30days') {
-                    const dayStr = localDay.day_of_month.toString(); // KHÔNG padStart
-                    const idx = this.labels.indexOf(dayStr);
-                    if (idx !== -1) data.x = e.value;
-                  } else {
-                    data.x = localDay.day_of_month;
-                  }
-                } else if (this.params.group_type === 'hour') {
-                  data.x = e._id.hour; // Giờ trong ngày
-                }
-                data.y = e.value;
-                datas.push(data);
-              }
-
-              if (e.value < min || min === 0) {
-                min = e.value;
-              }
-              if (e.value > max || max === 0) {
-                max = e.value;
-              }
-            });
+            datas = this.mapDataToXY(res.data[0].items);
+            if (datas.length > 0) {
+              min = Math.min(...datas.map((d) => d.y));
+              max = Math.max(...datas.map((d) => d.y));
+            }
           }
           //item.dataCharts = datas;
           item.avg = Utils.roundDecimals(res.data[0]?.avg || 0, 1);
@@ -611,33 +511,21 @@ export class HdsComponent implements OnInit {
               )
             ) {
               // 1.=== line chart ===
-              console.log('datas', datas);
-              let scatterData: any = [];
-              if (this.textPickDate === 'last30days') {
-                for (let i = 0; i < this.labels.length; i++) {
-                  scatterData.push(datas[i] ?? null); // ✅ không shift index
-                }
-              } else if (this.textPickDate === 'thisWeek') {
-                scatterData = datas;
-              } else {
-                scatterData = datas
-                  .map((v, i) => (v !== null ? { x: i, y: v } : null))
-                  .filter((v) => v);
-              }
-              console.log('this.labels', this.labels);
-              console.log('scatterData', scatterData);
+
+              const scatterDataIndex = this.buildChartData(datas);
               item.dataCharts = [
                 {
                   type: 'line',
                   label: item._id.sample_type_group_id,
-                  data: scatterData,
+                  data: scatterDataIndex.data,
                   borderColor: item.items[0].chart_icon_color[0],
                   backgroundColor: item.items[0].chart_icon_color[0],
                   tension: 0.3,
                   fill: false,
                   pointRadius: 6,
-                  showLine: true, // Bật line nối giữa các điểm
-                  spanGaps: true, // Cho phép bỏ qua null
+                  showLine: true,
+                  spanGaps: true,
+                  parsing: { xAxisKey: 'x', yAxisKey: 'y' },
                 },
               ];
 
@@ -649,7 +537,7 @@ export class HdsComponent implements OnInit {
                   tooltip: this.tooltipOpts,
                 },
                 scales: {
-                  x: this.xScale,
+                  x: scatterDataIndex.xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
@@ -664,39 +552,73 @@ export class HdsComponent implements OnInit {
                 initCharts.minMaxCharts
               )
             ) {
-              // === 2. scatter + min/max ===
+              //2. === min max chart ===
               item.chartType = 'scatter';
 
-              // ✅ Tìm min/max và set màu ngay trong dataset
-              let minIndex = 0,
-                maxIndex = 0;
-              if (datas.length > 0) {
-                let min = 0,
-                  max = 0;
-                datas.forEach((d, idx) => {
-                  if (d.y < min) {
-                    min = d.y;
+              let scatterDataIndex: { x: string | number; y: number | null }[];
+              let xScale: any;
+
+              if (
+                this.textPickDate === 'last30days' ||
+                this.textPickDate === 'customDate'
+              ) {
+                // x = chính là label string (ví dụ: '31','1','2',...)
+                scatterDataIndex = this.labels.map((lbl) => {
+                  const found = datas.find((d) => d.x === lbl);
+                  return { x: lbl, y: found ? found.y : null };
+                });
+
+                xScale = {
+                  type: 'category',
+                  labels: this.labels,
+                  offset: false,
+                  ticks: { stepSize: 1 },
+                };
+              } else {
+                scatterDataIndex = datas.map((d) => ({
+                  x: d.x,
+                  y: d.y,
+                }));
+                xScale = this.xScale;
+              }
+
+              // Tìm min/max dựa trên scatterDataIndex
+              let minIndex = -1,
+                maxIndex = -1;
+              let minY = Number.MAX_SAFE_INTEGER,
+                maxY = Number.MIN_SAFE_INTEGER;
+
+              scatterDataIndex.forEach((d, idx) => {
+                if (d.y !== null) {
+                  if (d.y < minY) {
+                    minY = d.y;
                     minIndex = idx;
                   }
-                  if (d.y > max) {
-                    max = d.y;
+                  if (d.y > maxY) {
+                    maxY = d.y;
                     maxIndex = idx;
                   }
-                });
-              }
-              console.log('datas', datas);
+                }
+              });
+
+              const cstMin = Utils.roundDecimals(minY - 20, 0);
+              const cstMax = Utils.roundDecimals(maxY + 20, 0);
+              console.log('scatterDataIndex', scatterDataIndex);
+              console.log('minIndex', minIndex, 'maxIndex', maxIndex);
+              console.log('this.labels', this.labels);
               item.dataCharts = [
                 {
                   label: item._id.sample_type_group_id,
-                  data: datas,
+                  data: scatterDataIndex,
+                  parsing: { xAxisKey: 'x', yAxisKey: 'y' },
                   type: 'scatter',
                   pointRadius: 6,
-                  pointBackgroundColor: datas.map((_, idx) =>
+                  pointBackgroundColor: scatterDataIndex.map((_, idx) =>
                     idx === minIndex || idx === maxIndex
                       ? 'white'
                       : item.items[0].chart_icon_color[0]
                   ),
-                  pointBorderColor: datas.map((_, idx) =>
+                  pointBorderColor: scatterDataIndex.map((_, idx) =>
                     idx === minIndex || idx === maxIndex
                       ? 'red'
                       : item.items[0].chart_icon_color[0]
@@ -713,7 +635,7 @@ export class HdsComponent implements OnInit {
                   tooltip: this.tooltipOpts,
                 },
                 scales: {
-                  x: this.xScale,
+                  x: xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
@@ -724,13 +646,12 @@ export class HdsComponent implements OnInit {
               Utils.inArray(item._id.sample_type_group_id, initCharts.barCharts)
             ) {
               // === 3. bar chart ===
-              const barData = datas.map((v) => (v !== null ? v : 0));
-
+              const scatterDataIndex = this.buildChartData(datas);
               item.dataCharts = [
                 {
                   type: 'bar',
                   label: item._id.sample_type_group_id,
-                  data: barData,
+                  data: scatterDataIndex.data,
                   backgroundColor: item.items[0].chart_icon_color[0],
                   borderColor: item.items[0].chart_icon_color[0],
                   borderWidth: 1,
@@ -765,10 +686,11 @@ export class HdsComponent implements OnInit {
             } else {
               // === 4. scatter chart ===
               item.chartType = 'scatter';
+              const scatterDataIndex = this.buildChartData(datas);
               item.dataCharts = [
                 {
                   label: item._id.sample_type_group_id,
-                  data: datas,
+                  data: scatterDataIndex.data,
                   backgroundColor: item.items[0].chart_icon_color[0],
                   type: 'scatter',
                   pointRadius: 6,
@@ -782,7 +704,7 @@ export class HdsComponent implements OnInit {
                   tooltip: this.tooltipOpts,
                 },
                 scales: {
-                  x: this.xScale,
+                  x: scatterDataIndex.xScale,
                   y: {
                     min: cstMin < 0 ? 0 : cstMin,
                     max: cstMax,
@@ -811,15 +733,6 @@ export class HdsComponent implements OnInit {
           return of(null);
         })
       );
-
-      /* this.dashboardService.loadHDSSharedSamples4ChartView(body).subscribe({
-        next: (res) => {
-          
-        },
-        error: (err) => {
-          console.error('Lỗi khi tải dashboard:', err);
-        },
-      }); */
     });
     return forkJoin(apiCalls).pipe(
       tap(() => {

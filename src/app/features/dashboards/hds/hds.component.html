@@ -178,7 +178,7 @@
             </div>
           </div>
           <div class="wrapper-chart">
-            @if (item.dataCharts[0]?.data?.length > 0) {
+            @if (checkHasItemInChart(item.dataCharts[0]?.data)) {
             <div class="div-wrapper-chart">
               <canvas
                 baseChart
