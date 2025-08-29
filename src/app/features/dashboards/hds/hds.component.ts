@@ -22,10 +22,10 @@ import { DatePipe } from '@angular/common';
 import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
 import {
   minMaxLabelPlugin,
-  verticalLinePlugin,
+  crosshairLine,
 } from '../../../../plugins/chart-plugins';
 
-Chart.register(...registerables, minMaxLabelPlugin, verticalLinePlugin);
+Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
 
 @Component({
   selector: 'hds',
@@ -374,6 +374,8 @@ export class HdsComponent implements OnInit {
     day_of_month: number;
     month: number;
     year: number;
+    date: Date; // thêm field này
+    dateString: string; // thêm field này
   } {
     // 1. Lấy ngày gốc từ server (theo day_of_year)
     const utcDate = new Date(Date.UTC(e.year, 0, 1));
@@ -383,33 +385,63 @@ export class HdsComponent implements OnInit {
     const localDate = new Date(utcDate);
 
     return {
-      day_of_week: localDate.getDay(), // 0 = Chủ nhật
-      day_of_month: localDate.getDate(), // Ngày trong tháng
-      month: localDate.getMonth() + 1, // Tháng (JS: 0-11 → +1 để thành 1-12)
+      day_of_week: localDate.getDay(),
+      day_of_month: localDate.getDate(),
+      month: localDate.getMonth() + 1,
       year: localDate.getFullYear(),
+      date: localDate, // vẫn giữ nếu muốn
+      dateString: localDate.toISOString(), // thêm field string
     };
   }
-  mapDataToXY(items: any[]): { x: string | number; y: number }[] {
-    const datas: { x: string | number; y: number }[] = [];
+  mapDataToXY(
+    items: any[]
+  ): { x: string | number; y: number; date?: string }[] {
+    const datas: { x: string | number; y: number; date?: string }[] = [];
+
     items.forEach((e: any) => {
-      const data: { x: string | number; y: number } = { x: '', y: e.value };
+      const data: { x: string | number; y: number; date?: string } = {
+        x: '',
+        y: e.value,
+      };
 
       if (this.params.group_type === 'months') {
-        // x có thể là số tháng hoặc label string nếu cần
         data.x = e._id.month.toString();
+        data.date = `${e._id.year}-${String(e._id.month).padStart(2, '0')}-01`;
       } else if (this.params.group_type === 'days') {
-        const localDay = this.convertServerDayToClient(e._id); // giả sử function của Nam
+        // e._id.day = day-of-year
+        const baseDate = new Date(e._id.year, 0, 1); // 01-01
+        const realDate = new Date(
+          baseDate.getTime() + (e._id.day - 1) * 86400000
+        );
+
+        const yyyy = realDate.getFullYear();
+        const mm = String(realDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(realDate.getDate()).padStart(2, '0');
+
+        data.date = `${yyyy}-${mm}-${dd}`;
+
         if (this.textPickDate === 'thisWeek') {
-          // day_of_week = 0(SUN) → 6(SAT)
-          data.x = this.labels[localDay.day_of_week]; // string label
+          const dow = realDate.getDay(); // 0=SUN..6=SAT
+          data.x = this.labels[dow]; // "SUN", "MON", ...
         } else {
-          const dayStr = localDay.day_of_month.toString();
-          if (this.labels.includes(dayStr)) {
-            data.x = dayStr; // string label
-          }
+          data.x = dd; // hiển thị theo ngày trong tháng
         }
       } else if (this.params.group_type === 'hour') {
         data.x = e._id.hour; // 0-23
+
+        const baseDate = new Date(e._id.year, 0, 1);
+        const realDate = new Date(
+          baseDate.getTime() + (e._id.day - 1) * 86400000
+        );
+
+        const yyyy = realDate.getFullYear();
+        const mm = String(realDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(realDate.getDate()).padStart(2, '0');
+
+        data.date = `${yyyy}-${mm}-${dd} ${String(e._id.hour).padStart(
+          2,
+          '0'
+        )}:00`;
       }
 
       datas.push(data);
@@ -417,15 +449,22 @@ export class HdsComponent implements OnInit {
 
     return datas;
   }
+
   private buildChartData(datas: any[]): { data: any[]; xScale: any } {
-    if (
-      this.textPickDate === 'last30days' ||
-      this.textPickDate === 'customDate'
-    ) {
+    if (this.textPickDate === 'this_week') {
       const scatterDataIndex = this.labels.map((lbl, idx) => {
-        const found = datas.find((d) => d.x === lbl);
-        return { x: idx, y: found ? found.y : null };
+        const found = datas.find((d) => {
+          const dayOfWeek = new Date(d.date).getDay(); // 0=SUN .. 6=SAT
+          return initCharts.weekDays[dayOfWeek] === lbl;
+        });
+
+        return {
+          x: lbl, // hiển thị SUN..SAT
+          y: found ? found.y : null,
+          date: found ? found.date : null,
+        };
       });
+
       return {
         data: scatterDataIndex,
         xScale: {
@@ -436,11 +475,42 @@ export class HdsComponent implements OnInit {
         },
       };
     }
+
+    if (
+      this.textPickDate === 'last30days' ||
+      this.textPickDate === 'customDate'
+    ) {
+      const scatterDataIndex = this.labels.map((lbl, idx) => {
+        const found = datas.find((d) => String(d.x) === String(lbl));
+        return {
+          x: lbl, // giữ nguyên ngày trong labels
+          y: found ? found.y : null,
+          date: found ? found.date : null,
+        };
+      });
+
+      return {
+        data: scatterDataIndex,
+        xScale: {
+          type: 'category',
+          labels: this.labels,
+          offset: false,
+          ticks: { stepSize: 1 },
+        },
+      };
+    }
+
+    // fallback
     return {
-      data: datas.map((d) => ({ x: d.x, y: d.y })),
+      data: datas.map((d) => ({
+        x: d.x,
+        y: d.y,
+        date: d.date,
+      })),
       xScale: this.xScale,
     };
   }
+
   private loadData4Charts(): Observable<void> {
     const apiCalls = this.sampleTypes.map((item: any) => {
       const body = {
@@ -513,6 +583,8 @@ export class HdsComponent implements OnInit {
               // 1.=== line chart ===
 
               const scatterDataIndex = this.buildChartData(datas);
+              console.log('label', this.labels);
+              console.log('scatterDataIndex', scatterDataIndex.data);
               item.dataCharts = [
                 {
                   type: 'line',
@@ -565,7 +637,11 @@ export class HdsComponent implements OnInit {
                 // x = chính là label string (ví dụ: '31','1','2',...)
                 scatterDataIndex = this.labels.map((lbl) => {
                   const found = datas.find((d) => d.x === lbl);
-                  return { x: lbl, y: found ? found.y : null };
+                  return {
+                    x: lbl,
+                    y: found ? found.y : null,
+                    date: found ? found.date : null, // ✅ thêm date ở đây
+                  };
                 });
 
                 xScale = {
@@ -578,6 +654,7 @@ export class HdsComponent implements OnInit {
                 scatterDataIndex = datas.map((d) => ({
                   x: d.x,
                   y: d.y,
+                  date: d.date,
                 }));
                 xScale = this.xScale;
               }

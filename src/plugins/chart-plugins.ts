@@ -1,8 +1,8 @@
-import { Chart, Plugin } from 'chart.js';
+import { Plugin } from 'chart.js';
 import { Utils } from '../app/utils/utils';
 import { initCharts } from '../app/shared/constants';
-export // === Plugin hiển thị nhãn "min" và "max" chỉ cho Heart Rate ===
-const minMaxLabelPlugin: Plugin<'scatter'> = {
+
+export const minMaxLabelPlugin: Plugin<'scatter'> = {
   id: 'minMaxLabelPlugin',
   afterDatasetsDraw(chart) {
     const ctx = chart.ctx;
@@ -58,19 +58,53 @@ const minMaxLabelPlugin: Plugin<'scatter'> = {
     });
   },
 };
-export const verticalLinePlugin = {
-  id: 'verticalLinePlugin',
-  afterDraw: (chart: any) => {
-    if (chart.tooltip?._active?.length) {
-      const ctx = chart.ctx;
-      const x = chart.tooltip._active[0].element.x;
+
+export const crosshairLine = {
+  id: 'crosshairLine',
+  afterDatasetsDraw(chart: any) {
+    const {
+      ctx,
+      chartArea: { top, bottom, left, right },
+    } = chart;
+
+    const active = chart.getActiveElements();
+
+    if (active.length > 0) {
+      const { element, datasetIndex, index } = active[0];
+      const x = element.x;
+
+      // Vẽ đường thẳng
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(x, chart.chartArea.top);
-      ctx.lineTo(x, chart.chartArea.bottom);
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, bottom);
       ctx.lineWidth = 1;
-      ctx.strokeStyle = '#000';
+      ctx.strokeStyle = 'red'; // đổi màu dễ thấy
       ctx.stroke();
+      ctx.restore();
+
+      // Lấy dữ liệu gốc
+      const dataset = chart.data.datasets[datasetIndex];
+      const raw = dataset.data[index] as any;
+
+      let formatted = '';
+      if (raw?.date) {
+        const date = new Date(raw.date);
+        formatted = date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric',
+        });
+      }
+
+      console.log('raw:', raw, 'formatted:', formatted);
+
+      // Vẽ text (luôn luôn hiển thị test trước)
+      ctx.save();
+      ctx.fillStyle = 'red';
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(formatted || 'NO DATE', x, bottom + 10); // đẩy xuống xa để không bị cắt
       ctx.restore();
     }
   },
