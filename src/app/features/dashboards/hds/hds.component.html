@@ -148,7 +148,9 @@
     </div>
   </div>
   <ng-container *ngIf="isBrowser">
-    @for (group of chunkedSampleTypes; track $index) {
+    @if(chartDetail !== null) {
+    <hds-detail [chartDetail]="chartDetail"></hds-detail>
+    } @else { @for (group of chunkedSampleTypes; track $index) {
     <div class="row row-chart">
       @for (item of group; track $index) {
       <div class="col-sm-4 d-item-chart">
@@ -208,7 +210,10 @@
                   style="cursor: pointer"
                 >
                   <span class="ng-scope">
-                    <span class="md-caption ng-binding" style="cursor: pointer"
+                    <span
+                      class="md-caption ng-binding"
+                      (click)="detailChart(item)"
+                      style="cursor: pointer"
                       >View Data ></span
                     >
                   </span>
@@ -221,7 +226,6 @@
       </div>
       }
     </div>
-
-    }
+    } }
   </ng-container>
 </div>

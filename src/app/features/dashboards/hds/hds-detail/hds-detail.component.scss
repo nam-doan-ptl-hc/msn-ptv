@@ -1,0 +1,76 @@
+#wrapper-chart-detail {
+  background: #fff;
+  margin-top: 20px;
+  box-sizing: border-box;
+  -webkit-box-orient: vertical;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14),
+    0 2px 1px -1px rgba(0, 0, 0, 0.12);
+  color: rgba(0, 0, 0, 0.87);
+  border-radius: 2px;
+  padding: 20px;
+  .img-icon {
+    width: 40px;
+    height: 40px;
+  }
+  p {
+    margin-bottom: 0px;
+  }
+}
+.p-arrow {
+  margin: 0px 8px;
+}
+.latest-value {
+  margin-bottom: 0px;
+  margin-right: 20px;
+}
+.s24 {
+  font-size: 24px;
+  font-weight: bold;
+  padding-right: 3px;
+}
+.card-hd-text {
+  color: #838383;
+  text-transform: uppercase;
+  margin: 5px 5px 0 0;
+  font-size: 12px /*TODO: DOC 5987, lienbui*/;
+}
+.gray-color {
+  color: rgba(0, 0, 0, 0.54);
+}
+.md-body-2 {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 24px;
+}
+#div-table {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.img-icon-arrow:hover {
+  cursor: pointer;
+}
+.mat-sort-header-content {
+  color: #000 !important;
+}
+.img-icon-arrow {
+  width: 24px;
+  height: 24px;
+  opacity: 0.54;
+}
+.mat-mdc-cell,
+.mat-column-value {
+  padding: 10px 24px !important;
+}
+.mdc-data-table__cell,
+.mdc-data-table__header-cell {
+  padding: 0 24px;
+}
+mat-header-row {
+  background: #f3f3f3;
+  font-size: 14px;
+  font-weight: bold;
+}

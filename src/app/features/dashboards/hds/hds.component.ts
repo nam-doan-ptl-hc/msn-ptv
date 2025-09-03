@@ -24,6 +24,7 @@ import {
   minMaxLabelPlugin,
   crosshairLine,
 } from '../../../../plugins/chart-plugins';
+import { HdsDetailComponent } from './hds-detail/hds-detail.component';
 
 Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
 
@@ -36,6 +37,7 @@ Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
     MatDatepickerModule,
     MatNativeDateModule,
     ReactiveFormsModule,
+    HdsDetailComponent,
   ],
   templateUrl: './hds.component.html',
   providers: [DatePipe],
@@ -58,6 +60,7 @@ export class HdsComponent implements OnInit {
   labels: string[] = initCharts.monthNames;
 
   dataSnapshots: any[] = [];
+  chartDetail: any = null;
   sampleTypes: any[] = [];
   charts: any[] = [];
   user: any = {};
@@ -107,6 +110,11 @@ export class HdsComponent implements OnInit {
       }
     });
   }
+
+  public detailChart(item: any): void {
+    this.chartDetail = item;
+  }
+
   private updateXScaleFromParams() {
     const gt = this.params.group_type;
     if (!this.xScale) this.xScale = {};
