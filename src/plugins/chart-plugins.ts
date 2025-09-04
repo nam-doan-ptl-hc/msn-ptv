@@ -4,10 +4,12 @@ import { initCharts } from '../app/shared/constants';
 
 export const minMaxLabelPlugin: Plugin<'scatter'> = {
   id: 'minMaxLabelPlugin',
+
   afterDatasetsDraw(chart) {
     const ctx = chart.ctx;
 
     chart.data.datasets.forEach((dataset: any, i: number) => {
+      // Chỉ áp dụng cho scatter và các chart trong minMaxCharts
       if (
         dataset.type !== 'scatter' ||
         !Utils.inArray(dataset.label, initCharts.minMaxCharts)
@@ -18,18 +20,26 @@ export const minMaxLabelPlugin: Plugin<'scatter'> = {
       const data = dataset.data as { x: number | string; y: number | null }[];
       if (!data.length) return;
 
+      // Chỉ lấy các điểm có y !== null
       const validData = data
         .map((d, idx) => ({ ...d, idx }))
         .filter((d) => d.y !== null);
 
       if (!validData.length) return;
 
-      const min = validData.reduce((a, b) => (a.y! < b.y! ? a : b));
-      const max = validData.reduce((a, b) => (a.y! > b.y! ? a : b));
+      // Tìm giá trị min/max
+      const minY = Math.min(...validData.map((d) => d.y!));
+      const maxY = Math.max(...validData.map((d) => d.y!));
+
+      // Chỉ lấy 1 điểm duy nhất để highlight
+      // Dùng reverse().find để lấy điểm cuối cùng xuất hiện trong dataset
+      const minPointData = [...validData].reverse().find((d) => d.y === minY);
+      const maxPointData = [...validData].reverse().find((d) => d.y === maxY);
 
       const meta = chart.getDatasetMeta(i);
-      const minPoint = meta.data[min.idx];
-      const maxPoint = meta.data[max.idx];
+
+      const minPoint = minPointData ? meta.data[minPointData.idx] : null;
+      const maxPoint = maxPointData ? meta.data[maxPointData.idx] : null;
 
       ctx.save();
       ctx.font = '12px Arial';
@@ -42,16 +52,14 @@ export const minMaxLabelPlugin: Plugin<'scatter'> = {
           minPoint.y + 20 > chartArea.bottom
             ? minPoint.y - 10
             : minPoint.y + 20;
-
-        ctx.fillText(`Min ${Utils.roundDecimals(min.y!, 1)}`, minPoint.x, y);
+        ctx.fillText(`Min ${Utils.roundDecimals(minY, 1)}`, minPoint.x, y);
       }
 
       if (maxPoint) {
         const chartArea = chart.chartArea;
         const y =
           maxPoint.y - 10 < chartArea.top ? maxPoint.y + 20 : maxPoint.y - 10;
-
-        ctx.fillText(`Max ${Utils.roundDecimals(max.y!, 1)}`, maxPoint.x, y);
+        ctx.fillText(`Max ${Utils.roundDecimals(maxY, 1)}`, maxPoint.x, y);
       }
 
       ctx.restore();
@@ -96,8 +104,6 @@ export const crosshairLine = {
           year: 'numeric',
         });
       }
-
-      console.log('raw:', raw, 'formatted:', formatted);
 
       // Vẽ text (luôn luôn hiển thị test trước)
       ctx.save();

@@ -46,8 +46,8 @@
   line-height: 24px;
 }
 #div-table {
-  width: 100%;
   margin-top: 20px;
+  width: 100%;
 }
 
 .img-icon-arrow:hover {
@@ -70,7 +70,22 @@
   padding: 0 24px;
 }
 mat-header-row {
-  background: #f3f3f3;
+  background: #f3f3f3 !important;
   font-size: 14px;
   font-weight: bold;
+}
+mat-table {
+  width: 100% !important;
+  table-layout: fixed;
+}
+
+mat-header-cell,
+mat-cell {
+  padding: 8px 12px;
+  word-wrap: break-word;
+}
+
+mat-header-row,
+mat-row {
+  display: table-row;
 }

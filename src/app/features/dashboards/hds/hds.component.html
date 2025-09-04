@@ -149,7 +149,19 @@
   </div>
   <ng-container *ngIf="isBrowser">
     @if(chartDetail !== null) {
-    <hds-detail [chartDetail]="chartDetail"></hds-detail>
+    <div id="wrapper-hds-detail" class="hover-cusror">
+      <img
+        src="/assets/images/ic-close-LB.svg"
+        class="img-icon-close"
+        (click)="closeDetail()"
+      />
+      <hds-detail
+        [chartDetail]="chartDetail"
+        [changeViewDetail]="changeViewDetail"
+        [group_type]="params.group_type"
+      ></hds-detail>
+    </div>
+
     } @else { @for (group of chunkedSampleTypes; track $index) {
     <div class="row row-chart">
       @for (item of group; track $index) {

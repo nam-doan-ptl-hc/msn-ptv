@@ -1,6 +1,7 @@
 import { environment } from '../../environments/environment';
 import * as CryptoJS from 'crypto-js';
 import { conversionObject } from './metrics';
+import { initCharts } from '../shared/constants';
 var Util = {
   blood_glucose_unit: {
     mg: 'mg/dL',
@@ -73,7 +74,22 @@ export class Utils {
   static isBoolean(value: any): boolean {
     return typeof value === 'boolean' ? value === true : value === 'true';
   }
-
+  static getBodyTypeTopType(bodyType: string): any {
+    let body = { body_type: 'avg', top_type: 'avg' };
+    if (bodyType === 'STEP_AZ' || bodyType === 'HF_TREND') {
+      body.top_type = 'none';
+    } else if (bodyType === 'STEP') {
+      body.body_type = 'total';
+      body.top_type = 'total';
+    } else if (bodyType === 'HEIGHT') {
+      body.body_type = 'last';
+      body.top_type = 'last';
+    } else if (Utils.inArray(bodyType, initCharts.minMaxCharts)) {
+      body.body_type = 'list_value';
+      body.top_type = 'min_max';
+    }
+    return body;
+  }
   static removeLineEmpty(
     str: string,
     richEditor: string = 'no',

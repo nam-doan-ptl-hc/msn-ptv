@@ -27,7 +27,18 @@ import {
 import { HdsDetailComponent } from './hds-detail/hds-detail.component';
 
 Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
+type DataPoint = {
+  x: string | number;
+  y?: number | null;
+  value?: number[]; // nếu API trả mảng
+  date?: any;
+};
 
+type NormalizedPoint = {
+  x: string | number;
+  y: number | null; // sửa lại kiểu này
+  date: any;
+};
 @Component({
   selector: 'hds',
   standalone: true,
@@ -111,6 +122,9 @@ export class HdsComponent implements OnInit {
     });
   }
 
+  public closeDetail(): void {
+    this.chartDetail = null;
+  }
   public detailChart(item: any): void {
     this.chartDetail = item;
   }
@@ -157,7 +171,6 @@ export class HdsComponent implements OnInit {
   }
 
   private generateCurrentWeekLabels(): string[] {
-    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const labels: string[] = [];
 
     const today = new Date();
@@ -167,7 +180,7 @@ export class HdsComponent implements OnInit {
     for (let i = 0; i < 7; i++) {
       const d = new Date(firstDayOfWeek);
       d.setDate(firstDayOfWeek.getDate() + i);
-      labels.push(dayNames[d.getDay()]); // SUN, MON...
+      labels.push(initCharts.weekDays[d.getDay()]); // SUN, MON...
     }
 
     return labels;
@@ -457,20 +470,85 @@ export class HdsComponent implements OnInit {
 
     return datas;
   }
+  private toNum(v: any): number | null {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private normalizeDatas(
+    datas: DataPoint[],
+    labels: (string | number)[]
+  ): NormalizedPoint[] {
+    const index = new Map<string, { date: any; ys: number[] }>();
+
+    for (const d of datas ?? []) {
+      const key = String(Number(d.x));
+      if (key === 'NaN') continue;
+
+      const bucket = index.get(key) ?? { date: d.date ?? null, ys: [] };
+
+      // Trường hợp value là mảng
+      if (Array.isArray(d.value)) {
+        for (const v of d.value) {
+          const n = this.toNum(v);
+          if (n !== null) bucket.ys.push(n);
+        }
+      }
+
+      // 🔥 Thêm xử lý y là mảng
+      if (Array.isArray(d.y)) {
+        for (const v of d.y) {
+          const n = this.toNum(v);
+          if (n !== null) bucket.ys.push(n);
+        }
+      } else if (d.y !== undefined && d.y !== null) {
+        const ny = this.toNum(d.y);
+        if (ny !== null) bucket.ys.push(ny);
+      }
+
+      if (d.date != null) bucket.date = d.date;
+      index.set(key, bucket);
+    }
+
+    const out: NormalizedPoint[] = [];
+
+    for (const lbl of labels) {
+      const key = String(Number(lbl));
+      const bucket = index.get(key);
+
+      if (!bucket || bucket.ys.length === 0) {
+        out.push({ x: String(lbl), y: null, date: null });
+        continue;
+      }
+
+      for (const y of bucket.ys) {
+        out.push({ x: String(lbl), y, date: bucket.date });
+      }
+    }
+
+    return out;
+  }
 
   private buildChartData(datas: any[]): { data: any[]; xScale: any } {
     if (this.textPickDate === 'this_week') {
-      const scatterDataIndex = this.labels.map((lbl, idx) => {
+      const scatterDataIndex = this.labels.flatMap((lbl) => {
         const found = datas.find((d) => {
-          const dayOfWeek = new Date(d.date).getDay(); // 0=SUN .. 6=SAT
+          const dayOfWeek = new Date(d.date).getDay();
           return initCharts.weekDays[dayOfWeek] === lbl;
         });
 
-        return {
-          x: lbl, // hiển thị SUN..SAT
-          y: found ? found.y : null,
-          date: found ? found.date : null,
-        };
+        if (!found) return [{ x: lbl, y: null, date: null }];
+
+        if (Array.isArray(found.y)) {
+          // <-- sửa từ d.value thành found.y
+          return found.y.map((v: number) => ({
+            x: lbl,
+            y: v,
+            date: found.date,
+          }));
+        }
+
+        return [{ x: lbl, y: found.y ?? null, date: found.date ?? null }];
       });
 
       return {
@@ -488,13 +566,21 @@ export class HdsComponent implements OnInit {
       this.textPickDate === 'last30days' ||
       this.textPickDate === 'customDate'
     ) {
-      const scatterDataIndex = this.labels.map((lbl, idx) => {
-        const found = datas.find((d) => String(d.x) === String(lbl));
-        return {
-          x: lbl, // giữ nguyên ngày trong labels
-          y: found ? found.y : null,
-          date: found ? found.date : null,
-        };
+      const scatterDataIndex = this.labels.flatMap((lbl) => {
+        const found = datas.find((d) => Number(d.x) === Number(lbl));
+
+        if (!found) return [{ x: lbl, y: null, date: null }];
+
+        if (Array.isArray(found.y)) {
+          // <-- sửa từ found.value thành found.y
+          return found.y.map((v: number) => ({
+            x: lbl,
+            y: v,
+            date: found.date,
+          }));
+        }
+
+        return [{ x: lbl, y: found.y ?? null, date: found.date ?? null }];
       });
 
       return {
@@ -510,15 +596,291 @@ export class HdsComponent implements OnInit {
 
     // fallback
     return {
-      data: datas.map((d) => ({
-        x: d.x,
-        y: d.y,
-        date: d.date,
-      })),
+      data: datas.flatMap((d) => {
+        if (Array.isArray(d.y)) {
+          return d.y.map((v: number) => ({ x: d.x, y: v, date: d.date }));
+        }
+        return [{ x: d.x, y: d.y, date: d.date }];
+      }),
       xScale: this.xScale,
     };
   }
+  private getDateItemForChart(body: any, item: any): Observable<any> {
+    return this.dashboardService.loadHDSSharedSamples4ChartView(body).pipe(
+      tap((res) => {
+        if (res.code != 0) {
+          this.snackBar.open(res.msg, 'x', {
+            duration: 3000,
+            horizontalPosition: 'right',
+            verticalPosition: 'top',
+            panelClass: ['error-snackbar'],
+          });
+          return;
+        }
+        let datas: any[] = [],
+          min = 0,
+          max = 0;
 
+        if (!Utils.isEmpty(res.data)) {
+          datas = this.mapDataToXY(res.data[0].items);
+          if (datas.length > 0) {
+            min = Math.min(...datas.map((d) => d.y));
+            max = Math.max(...datas.map((d) => d.y));
+          }
+        }
+        //item.dataCharts = datas;
+        item.avg = Utils.roundDecimals(res.data[0]?.avg || 0, 1);
+        item.iconChart =
+          'ic-' +
+          item._id.sample_type_group_id.toLowerCase().replace(/_/g, '-') +
+          '-st.svg';
+        const cstMin = Utils.roundDecimals(min - 20, 0);
+        const cstMax = Utils.roundDecimals(max + 20, 0);
+        if (
+          Utils.inArray(
+            item._id.sample_type_group_id,
+            initCharts.sampleTypeShowCharts
+          )
+        ) {
+          if (
+            Utils.inArray(item._id.sample_type_group_id, initCharts.lineCharts)
+          ) {
+            // 1.=== line chart ===
+
+            const scatterDataIndex = this.buildChartData(datas);
+            console.log('datas', datas);
+            console.log('scatterDataIndex', scatterDataIndex);
+            console.log('labels', this.labels);
+            item.dataCharts = [
+              {
+                type: 'line',
+                label: item._id.sample_type_group_id,
+                data: scatterDataIndex.data,
+                dataOrigin: datas,
+                borderColor: item.items[0].chart_icon_color[0],
+                backgroundColor: item.items[0].chart_icon_color[0],
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                showLine: true,
+                spanGaps: true,
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' },
+              },
+            ];
+
+            item.chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: this.tooltipOpts,
+              },
+              scales: {
+                x: scatterDataIndex.xScale,
+                y: {
+                  min: cstMin < 0 ? 0 : cstMin,
+                  max: cstMax,
+                },
+              },
+            };
+
+            item.chartType = 'line';
+          } else if (
+            Utils.inArray(
+              item._id.sample_type_group_id,
+              initCharts.minMaxCharts
+            )
+          ) {
+            //2. === min max chart ===
+            item.chartType = 'scatter';
+
+            let scatterDataIndex: {
+              x: string | number;
+              y: number | null;
+              date?: any;
+            }[];
+            let xScale: any;
+
+            if (
+              this.textPickDate === 'last30days' ||
+              this.textPickDate === 'customDate'
+            ) {
+              // x = chính là label string (ví dụ: '31','1','2',...)
+              scatterDataIndex = this.normalizeDatas(datas, this.labels);
+
+              xScale = {
+                type: 'category',
+                labels: this.labels,
+                offset: false,
+                ticks: { stepSize: 1 },
+              };
+            } else {
+              scatterDataIndex = datas.flatMap((d) => {
+                if (Array.isArray(d.value)) {
+                  return d.value.map((v: number) => ({
+                    x: d.x,
+                    y: v,
+                    date: d.date,
+                  }));
+                }
+                return [{ x: d.x, y: d.y, date: d.date }];
+              });
+
+              xScale = this.xScale;
+            }
+
+            // Tìm min/max dựa trên scatterDataIndex
+            const validData = scatterDataIndex
+              .map((d, idx) => ({ ...d, idx }))
+              .filter((d) => d.y !== null);
+
+            const minY = Math.min(...validData.map((d) => d.y!));
+            const maxY = Math.max(...validData.map((d) => d.y!));
+
+            // Chọn 1 điểm duy nhất (điểm cuối cùng) để highlight
+            const minPointData = [...validData]
+              .reverse()
+              .find((d) => d.y === minY);
+            const maxPointData = [...validData]
+              .reverse()
+              .find((d) => d.y === maxY);
+
+            const minIndex = minPointData?.idx ?? -1;
+            const maxIndex = maxPointData?.idx ?? -1;
+
+            const cstMin = Utils.roundDecimals(minY - 20, 0);
+            const cstMax = Utils.roundDecimals(maxY + 20, 0);
+            item.dataCharts = [
+              {
+                label: item._id.sample_type_group_id,
+                data: scatterDataIndex,
+                dataOrigin: datas,
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' },
+                type: 'scatter',
+                pointRadius: 6,
+                pointBackgroundColor: scatterDataIndex.map((_, idx) =>
+                  idx === minIndex || idx === maxIndex
+                    ? 'white'
+                    : item.items[0].chart_icon_color[0]
+                ),
+                pointBorderColor: scatterDataIndex.map((_, idx) =>
+                  idx === minIndex || idx === maxIndex
+                    ? 'red'
+                    : item.items[0].chart_icon_color[0]
+                ),
+                pointBorderWidth: 2,
+              },
+            ];
+
+            item.chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: this.tooltipOpts,
+              },
+              scales: {
+                x: xScale,
+                y: {
+                  min: cstMin < 0 ? 0 : cstMin,
+                  max: cstMax,
+                },
+              },
+            };
+          } else if (
+            Utils.inArray(item._id.sample_type_group_id, initCharts.barCharts)
+          ) {
+            // === 3. bar chart ===
+            const scatterDataIndex = this.buildChartData(datas);
+            item.dataCharts = [
+              {
+                type: 'bar',
+                label: item._id.sample_type_group_id,
+                data: scatterDataIndex.data,
+                dataOrigin: datas,
+                backgroundColor: item.items[0].chart_icon_color[0],
+                borderColor: item.items[0].chart_icon_color[0],
+                borderWidth: 1,
+              },
+            ];
+
+            item.chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: this.tooltipOpts,
+              },
+              scales: {
+                x: {
+                  ...this.xScale,
+                  grid: {
+                    display: false,
+                  },
+                },
+                y: {
+                  min: cstMin < 0 ? 0 : cstMin - 30,
+                  max: cstMax + 30,
+                  ticks: {
+                    beginAtZero: true,
+                  },
+                },
+              },
+            };
+
+            item.chartType = 'bar';
+          } else {
+            // === 4. scatter chart ===
+            item.chartType = 'scatter';
+            const scatterDataIndex = this.buildChartData(datas);
+            item.dataCharts = [
+              {
+                label: item._id.sample_type_group_id,
+                data: scatterDataIndex.data,
+                dataOrigin: datas,
+                backgroundColor: item.items[0].chart_icon_color[0],
+                type: 'scatter',
+                pointRadius: 6,
+              },
+            ];
+            item.chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: this.tooltipOpts,
+              },
+              scales: {
+                x: scatterDataIndex.xScale,
+                y: {
+                  min: cstMin < 0 ? 0 : cstMin,
+                  max: cstMax,
+                },
+              },
+            };
+          }
+          //console.log('charts item:', item);
+          // ĐẢM BẢO item có thuộc tính data với cấu trúc đúng
+          item.data = {
+            labels: [], // Khởi tạo mảng labels rỗng
+            datasets: item.dataCharts,
+          };
+
+          // ĐẢM BẢO item có phương thức update
+          item.update = function () {
+            // Logic update sẽ được thêm sau
+          };
+
+          this.pushChartFixedPosition(item);
+        }
+        this.cdr.detectChanges();
+      }),
+      catchError((err) => {
+        console.error('Lỗi khi tải dashboard:', err);
+        return of(null);
+      })
+    );
+  }
   private loadData4Charts(): Observable<void> {
     const apiCalls = this.sampleTypes.map((item: any) => {
       const body = {
@@ -534,290 +896,10 @@ export class HdsComponent implements OnInit {
         show_patient_info: false,
         top_type: 'avg',
       };
-      if (
-        item._id.sample_type_group_id === 'STEP_AZ' ||
-        item._id.sample_type_group_id === 'HF_TREND'
-      ) {
-        body.top_type = 'none';
-      } else if (item._id.sample_type_group_id === 'STEP') {
-        body.body_type = 'total';
-        body.top_type = 'total';
-      } else if (item._id.sample_type_group_id === 'HEIGHT') {
-        body.body_type = 'last';
-        body.top_type = 'last';
-      }
-      return this.dashboardService.loadHDSSharedSamples4ChartView(body).pipe(
-        tap((res) => {
-          if (res.code != 0) {
-            this.snackBar.open(res.msg, 'x', {
-              duration: 3000,
-              horizontalPosition: 'right',
-              verticalPosition: 'top',
-              panelClass: ['error-snackbar'],
-            });
-            return;
-          }
-          let datas: any[] = [],
-            min = 0,
-            max = 0;
-
-          if (!Utils.isEmpty(res.data)) {
-            datas = this.mapDataToXY(res.data[0].items);
-            if (datas.length > 0) {
-              min = Math.min(...datas.map((d) => d.y));
-              max = Math.max(...datas.map((d) => d.y));
-            }
-          }
-          //item.dataCharts = datas;
-          item.avg = Utils.roundDecimals(res.data[0]?.avg || 0, 1);
-          item.iconChart =
-            'ic-' +
-            item._id.sample_type_group_id.toLowerCase().replace(/_/g, '-') +
-            '-st.svg';
-          const cstMin = Utils.roundDecimals(min - 20, 0);
-          const cstMax = Utils.roundDecimals(max + 20, 0);
-          if (
-            Utils.inArray(
-              item._id.sample_type_group_id,
-              initCharts.sampleTypeShowCharts
-            )
-          ) {
-            if (
-              Utils.inArray(
-                item._id.sample_type_group_id,
-                initCharts.lineCharts
-              )
-            ) {
-              // 1.=== line chart ===
-
-              const scatterDataIndex = this.buildChartData(datas);
-              console.log('label', this.labels);
-              console.log('scatterDataIndex', scatterDataIndex.data);
-              item.dataCharts = [
-                {
-                  type: 'line',
-                  label: item._id.sample_type_group_id,
-                  data: scatterDataIndex.data,
-                  borderColor: item.items[0].chart_icon_color[0],
-                  backgroundColor: item.items[0].chart_icon_color[0],
-                  tension: 0.3,
-                  fill: false,
-                  pointRadius: 6,
-                  showLine: true,
-                  spanGaps: true,
-                  parsing: { xAxisKey: 'x', yAxisKey: 'y' },
-                },
-              ];
-
-              item.chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: this.tooltipOpts,
-                },
-                scales: {
-                  x: scatterDataIndex.xScale,
-                  y: {
-                    min: cstMin < 0 ? 0 : cstMin,
-                    max: cstMax,
-                  },
-                },
-              };
-
-              item.chartType = 'line';
-            } else if (
-              Utils.inArray(
-                item._id.sample_type_group_id,
-                initCharts.minMaxCharts
-              )
-            ) {
-              //2. === min max chart ===
-              item.chartType = 'scatter';
-
-              let scatterDataIndex: { x: string | number; y: number | null }[];
-              let xScale: any;
-
-              if (
-                this.textPickDate === 'last30days' ||
-                this.textPickDate === 'customDate'
-              ) {
-                // x = chính là label string (ví dụ: '31','1','2',...)
-                scatterDataIndex = this.labels.map((lbl) => {
-                  const found = datas.find((d) => d.x === lbl);
-                  return {
-                    x: lbl,
-                    y: found ? found.y : null,
-                    date: found ? found.date : null, // ✅ thêm date ở đây
-                  };
-                });
-
-                xScale = {
-                  type: 'category',
-                  labels: this.labels,
-                  offset: false,
-                  ticks: { stepSize: 1 },
-                };
-              } else {
-                scatterDataIndex = datas.map((d) => ({
-                  x: d.x,
-                  y: d.y,
-                  date: d.date,
-                }));
-                xScale = this.xScale;
-              }
-
-              // Tìm min/max dựa trên scatterDataIndex
-              let minIndex = -1,
-                maxIndex = -1;
-              let minY = Number.MAX_SAFE_INTEGER,
-                maxY = Number.MIN_SAFE_INTEGER;
-
-              scatterDataIndex.forEach((d, idx) => {
-                if (d.y !== null) {
-                  if (d.y < minY) {
-                    minY = d.y;
-                    minIndex = idx;
-                  }
-                  if (d.y > maxY) {
-                    maxY = d.y;
-                    maxIndex = idx;
-                  }
-                }
-              });
-
-              const cstMin = Utils.roundDecimals(minY - 20, 0);
-              const cstMax = Utils.roundDecimals(maxY + 20, 0);
-              console.log('scatterDataIndex', scatterDataIndex);
-              console.log('minIndex', minIndex, 'maxIndex', maxIndex);
-              console.log('this.labels', this.labels);
-              item.dataCharts = [
-                {
-                  label: item._id.sample_type_group_id,
-                  data: scatterDataIndex,
-                  parsing: { xAxisKey: 'x', yAxisKey: 'y' },
-                  type: 'scatter',
-                  pointRadius: 6,
-                  pointBackgroundColor: scatterDataIndex.map((_, idx) =>
-                    idx === minIndex || idx === maxIndex
-                      ? 'white'
-                      : item.items[0].chart_icon_color[0]
-                  ),
-                  pointBorderColor: scatterDataIndex.map((_, idx) =>
-                    idx === minIndex || idx === maxIndex
-                      ? 'red'
-                      : item.items[0].chart_icon_color[0]
-                  ),
-                  pointBorderWidth: 2,
-                },
-              ];
-
-              item.chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: this.tooltipOpts,
-                },
-                scales: {
-                  x: xScale,
-                  y: {
-                    min: cstMin < 0 ? 0 : cstMin,
-                    max: cstMax,
-                  },
-                },
-              };
-            } else if (
-              Utils.inArray(item._id.sample_type_group_id, initCharts.barCharts)
-            ) {
-              // === 3. bar chart ===
-              const scatterDataIndex = this.buildChartData(datas);
-              item.dataCharts = [
-                {
-                  type: 'bar',
-                  label: item._id.sample_type_group_id,
-                  data: scatterDataIndex.data,
-                  backgroundColor: item.items[0].chart_icon_color[0],
-                  borderColor: item.items[0].chart_icon_color[0],
-                  borderWidth: 1,
-                },
-              ];
-
-              item.chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: this.tooltipOpts,
-                },
-                scales: {
-                  x: {
-                    ...this.xScale,
-                    grid: {
-                      display: false,
-                    },
-                  },
-                  y: {
-                    min: cstMin < 0 ? 0 : cstMin - 30,
-                    max: cstMax + 30,
-                    ticks: {
-                      beginAtZero: true,
-                    },
-                  },
-                },
-              };
-
-              item.chartType = 'bar';
-            } else {
-              // === 4. scatter chart ===
-              item.chartType = 'scatter';
-              const scatterDataIndex = this.buildChartData(datas);
-              item.dataCharts = [
-                {
-                  label: item._id.sample_type_group_id,
-                  data: scatterDataIndex.data,
-                  backgroundColor: item.items[0].chart_icon_color[0],
-                  type: 'scatter',
-                  pointRadius: 6,
-                },
-              ];
-              item.chartOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: this.tooltipOpts,
-                },
-                scales: {
-                  x: scatterDataIndex.xScale,
-                  y: {
-                    min: cstMin < 0 ? 0 : cstMin,
-                    max: cstMax,
-                  },
-                },
-              };
-            }
-            //console.log('charts item:', item);
-            // ĐẢM BẢO item có thuộc tính data với cấu trúc đúng
-            item.data = {
-              labels: [], // Khởi tạo mảng labels rỗng
-              datasets: item.dataCharts,
-            };
-
-            // ĐẢM BẢO item có phương thức update
-            item.update = function () {
-              // Logic update sẽ được thêm sau
-            };
-
-            this.pushChartFixedPosition(item);
-          }
-          this.cdr.detectChanges();
-        }),
-        catchError((err) => {
-          console.error('Lỗi khi tải dashboard:', err);
-          return of(null);
-        })
-      );
+      const dataTypes = Utils.getBodyTypeTopType(item._id.sample_type_group_id);
+      body.body_type = dataTypes.body_type;
+      body.top_type = dataTypes.top_type;
+      return this.getDateItemForChart(body, item); // phải return Observable
     });
     return forkJoin(apiCalls).pipe(
       tap(() => {
@@ -827,6 +909,11 @@ export class HdsComponent implements OnInit {
     );
     console.log('charts:', this.charts);
   }
+  changeViewDetail = (group_type: string, item: any) => {
+    console.log('this.params.group_type', group_type);
+    console.log('item chart', item);
+    // thực hiện logic thay đổi view
+  };
   private normalizePos(pos: any): number {
     if (pos == null) return Number.POSITIVE_INFINITY;
     if (typeof pos === 'number') return pos;
