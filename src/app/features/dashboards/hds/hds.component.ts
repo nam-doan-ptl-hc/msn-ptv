@@ -605,7 +605,13 @@ export class HdsComponent implements OnInit {
       xScale: this.xScale,
     };
   }
-  private getDateItemForChart(body: any, item: any): Observable<any> {
+  private getDateItemForChart(
+    body: any,
+    sample_type: string,
+    items: any,
+    sort_order: string
+  ): Observable<any> {
+    let item: any = {};
     return this.dashboardService.loadHDSSharedSamples4ChartView(body).pipe(
       tap((res) => {
         if (res.code != 0) {
@@ -631,34 +637,23 @@ export class HdsComponent implements OnInit {
         //item.dataCharts = datas;
         item.avg = Utils.roundDecimals(res.data[0]?.avg || 0, 1);
         item.iconChart =
-          'ic-' +
-          item._id.sample_type_group_id.toLowerCase().replace(/_/g, '-') +
-          '-st.svg';
+          'ic-' + sample_type.toLowerCase().replace(/_/g, '-') + '-st.svg';
         const cstMin = Utils.roundDecimals(min - 20, 0);
         const cstMax = Utils.roundDecimals(max + 20, 0);
-        if (
-          Utils.inArray(
-            item._id.sample_type_group_id,
-            initCharts.sampleTypeShowCharts
-          )
-        ) {
-          if (
-            Utils.inArray(item._id.sample_type_group_id, initCharts.lineCharts)
-          ) {
-            // 1.=== line chart ===
+        if (Utils.inArray(sample_type, initCharts.sampleTypeShowCharts)) {
+          if (Utils.inArray(sample_type, initCharts.lineCharts)) {
+            // 1.1=== line chart ===
 
             const scatterDataIndex = this.buildChartData(datas);
-            console.log('datas', datas);
-            console.log('scatterDataIndex', scatterDataIndex);
-            console.log('labels', this.labels);
+
             item.dataCharts = [
               {
                 type: 'line',
-                label: item._id.sample_type_group_id,
+                label: sample_type,
                 data: scatterDataIndex.data,
                 dataOrigin: datas,
-                borderColor: item.items[0].chart_icon_color[0],
-                backgroundColor: item.items[0].chart_icon_color[0],
+                borderColor: items[0].chart_icon_color[0],
+                backgroundColor: items[0].chart_icon_color[0],
                 tension: 0.3,
                 fill: false,
                 pointRadius: 6,
@@ -667,7 +662,6 @@ export class HdsComponent implements OnInit {
                 parsing: { xAxisKey: 'x', yAxisKey: 'y' },
               },
             ];
-
             item.chartOptions = {
               responsive: true,
               maintainAspectRatio: false,
@@ -685,12 +679,74 @@ export class HdsComponent implements OnInit {
             };
 
             item.chartType = 'line';
-          } else if (
-            Utils.inArray(
-              item._id.sample_type_group_id,
-              initCharts.minMaxCharts
-            )
-          ) {
+          } else if (Utils.inArray(sample_type, initCharts.line2Charts)) {
+            // 1.2=== line 2 chart ===
+
+            const scatterDataIndex = this.buildChartData(datas);
+            console.log('datas', datas);
+            console.log('scatterDataIndex', scatterDataIndex);
+            console.log('labels', this.labels);
+            let color = items[0].chart_icon_color[0];
+            item.dataCharts = [
+              {
+                type: 'line',
+                label: sample_type,
+                data: scatterDataIndex.data,
+                dataOrigin: datas,
+                borderColor: color,
+                backgroundColor: color,
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                showLine: true,
+                spanGaps: true,
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' },
+              },
+            ];
+            if (!Utils.isEmpty(res.data[1])) {
+              const data2s = this.mapDataToXY(res.data[1].items);
+              if (data2s.length > 0) {
+                const min2 = Math.min(...data2s.map((d) => d.y));
+                const max2 = Math.max(...data2s.map((d) => d.y));
+                if (min > min2) min = min2;
+                if (max2 > max) max = max2;
+              }
+              let color = items[0].chart_icon_color[1];
+              const scatterDataIndex = this.buildChartData(data2s);
+              item.dataCharts.push({
+                type: 'line',
+                label: sample_type,
+                data: scatterDataIndex.data,
+                dataOrigin: data2s,
+                borderColor: color,
+                backgroundColor: color,
+                tension: 0.3,
+                fill: false,
+                pointRadius: 6,
+                showLine: true,
+                spanGaps: true,
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' },
+              });
+              console.log('item.items', item.items);
+            }
+            item.chartOptions = {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: this.tooltipOpts,
+              },
+              scales: {
+                x: scatterDataIndex.xScale,
+                y: {
+                  min: cstMin < 0 ? 0 : cstMin,
+                  max: cstMax,
+                },
+              },
+            };
+
+            item.chartType = 'line';
+          } else if (Utils.inArray(sample_type, initCharts.minMaxCharts)) {
             //2. === min max chart ===
             item.chartType = 'scatter';
 
@@ -752,7 +808,7 @@ export class HdsComponent implements OnInit {
             const cstMax = Utils.roundDecimals(maxY + 20, 0);
             item.dataCharts = [
               {
-                label: item._id.sample_type_group_id,
+                label: sample_type,
                 data: scatterDataIndex,
                 dataOrigin: datas,
                 parsing: { xAxisKey: 'x', yAxisKey: 'y' },
@@ -761,12 +817,12 @@ export class HdsComponent implements OnInit {
                 pointBackgroundColor: scatterDataIndex.map((_, idx) =>
                   idx === minIndex || idx === maxIndex
                     ? 'white'
-                    : item.items[0].chart_icon_color[0]
+                    : items[0].chart_icon_color[0]
                 ),
                 pointBorderColor: scatterDataIndex.map((_, idx) =>
                   idx === minIndex || idx === maxIndex
                     ? 'red'
-                    : item.items[0].chart_icon_color[0]
+                    : items[0].chart_icon_color[0]
                 ),
                 pointBorderWidth: 2,
               },
@@ -787,19 +843,17 @@ export class HdsComponent implements OnInit {
                 },
               },
             };
-          } else if (
-            Utils.inArray(item._id.sample_type_group_id, initCharts.barCharts)
-          ) {
+          } else if (Utils.inArray(sample_type, initCharts.barCharts)) {
             // === 3. bar chart ===
             const scatterDataIndex = this.buildChartData(datas);
             item.dataCharts = [
               {
                 type: 'bar',
-                label: item._id.sample_type_group_id,
+                label: sample_type,
                 data: scatterDataIndex.data,
                 dataOrigin: datas,
-                backgroundColor: item.items[0].chart_icon_color[0],
-                borderColor: item.items[0].chart_icon_color[0],
+                backgroundColor: items[0].chart_icon_color[0],
+                borderColor: items[0].chart_icon_color[0],
                 borderWidth: 1,
               },
             ];
@@ -835,10 +889,10 @@ export class HdsComponent implements OnInit {
             const scatterDataIndex = this.buildChartData(datas);
             item.dataCharts = [
               {
-                label: item._id.sample_type_group_id,
+                label: sample_type,
                 data: scatterDataIndex.data,
                 dataOrigin: datas,
-                backgroundColor: item.items[0].chart_icon_color[0],
+                backgroundColor: items[0].chart_icon_color[0],
                 type: 'scatter',
                 pointRadius: 6,
               },
@@ -870,8 +924,10 @@ export class HdsComponent implements OnInit {
           item.update = function () {
             // Logic update sẽ được thêm sau
           };
-
-          this.pushChartFixedPosition(item);
+          item.name = items[0].name || '';
+          item.items = items;
+          item.sample_type = sample_type;
+          this.pushChartFixedPosition(item, sample_type, sort_order);
         }
         this.cdr.detectChanges();
       }),
@@ -899,7 +955,12 @@ export class HdsComponent implements OnInit {
       const dataTypes = Utils.getBodyTypeTopType(item._id.sample_type_group_id);
       body.body_type = dataTypes.body_type;
       body.top_type = dataTypes.top_type;
-      return this.getDateItemForChart(body, item); // phải return Observable
+      return this.getDateItemForChart(
+        body,
+        item._id.sample_type_group_id,
+        item.items,
+        item.sort_order
+      ); // phải return Observable
     });
     return forkJoin(apiCalls).pipe(
       tap(() => {
@@ -924,11 +985,14 @@ export class HdsComponent implements OnInit {
     return Number.POSITIVE_INFINITY;
   }
 
-  private pushChartFixedPosition(item: any) {
-    const _pos = this.normalizePos(item.sort_order);
-    const key = item._id?.sample_type_group_id;
+  private pushChartFixedPosition(
+    item: any,
+    sample_type: string,
+    sort_order: string
+  ) {
+    const _pos = this.normalizePos(sort_order);
     const idx = this.charts.findIndex(
-      (c: any) => c._id?.sample_type_group_id === key
+      (c: any) => c._id?.sample_type_group_id === sample_type
     );
     const entry = { ...item, _pos };
 

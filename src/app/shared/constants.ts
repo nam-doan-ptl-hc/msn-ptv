@@ -5,6 +5,7 @@ export const initGrDetailPage = {
   listCodeShowIcon: [6, 8, 25, 27, 28],
 };
 export const initCharts = {
+  line2Charts: ['BP'],
   lineCharts: ['O2S', 'BODY_TEMPER', 'PPI', 'PVi', 'WEIGHT', 'R2'],
   barCharts: ['STEP', 'STEP_AZ'],
   minMaxCharts: ['HR'],

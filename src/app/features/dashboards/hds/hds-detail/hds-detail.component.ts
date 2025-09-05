@@ -97,7 +97,7 @@ export class HdsDetailComponent implements OnInit, AfterViewInit {
 
     // Chuyển data về dạng min-max
     const mappedData = Utils.inArray(
-      this.chartDetail._id.sample_type_group_id,
+      this.chartDetail.sample_type,
       initCharts.minMaxCharts
     )
       ? this.mapMinMax(this.chartDetail.dataCharts[0].dataOrigin)
