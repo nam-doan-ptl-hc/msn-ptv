@@ -128,7 +128,22 @@ export class HdsComponent implements OnInit {
   public detailChart(item: any): void {
     this.chartDetail = item;
   }
-
+  private loadChartDetail(): Observable<void> {
+    this.chartDetail.params.from = this.params.dateFrom;
+    this.chartDetail.params.to = this.params.dateTo;
+    const apiCalls = this.getDataItemForChart(
+      this.chartDetail.params,
+      this.chartDetail.sample_type,
+      this.chartDetail.items,
+      this.chartDetail.sort_order
+    );
+    return forkJoin(apiCalls).pipe(
+      tap(() => {
+        this.cdr.detectChanges();
+      }),
+      map(() => void 0)
+    );
+  }
   private updateXScaleFromParams() {
     const gt = this.params.group_type;
     if (!this.xScale) this.xScale = {};
@@ -254,12 +269,15 @@ export class HdsComponent implements OnInit {
 
     this.labels = this.generateXAxisLabels();
     this.updateXScaleFromParams();
-
-    // Cập nhật tất cả biểu đồ
-    try {
-      await this.loadData4Charts().toPromise();
-    } catch (error) {
-      console.error('Lỗi khi tải dữ liệu:', error);
+    if (!Utils.isEmpty(this.chartDetail)) {
+      await this.loadChartDetail().toPromise();
+    } else {
+      // Cập nhật tất cả biểu đồ
+      try {
+        await this.loadData4Charts().toPromise();
+      } catch (error) {
+        console.error('Lỗi khi tải dữ liệu:', error);
+      }
     }
   }
 
@@ -605,13 +623,13 @@ export class HdsComponent implements OnInit {
       xScale: this.xScale,
     };
   }
-  private getDateItemForChart(
+  private getDataItemForChart(
     body: any,
     sample_type: string,
     items: any,
     sort_order: string
   ): Observable<any> {
-    let item: any = {};
+    let item: any = { params: body, textPickDate: this.textPickDate }; // chart item
     return this.dashboardService.loadHDSSharedSamples4ChartView(body).pipe(
       tap((res) => {
         if (res.code != 0) {
@@ -785,15 +803,31 @@ export class HdsComponent implements OnInit {
               xScale = this.xScale;
             }
 
-            // Tìm min/max dựa trên scatterDataIndex
-            const validData = scatterDataIndex
-              .map((d, idx) => ({ ...d, idx }))
-              .filter((d) => d.y !== null);
+            // Trải phẳng nhưng giữ index
+            const validData = scatterDataIndex.flatMap((d, idx) => {
+              if (Array.isArray(d.y)) {
+                return d.y.map((yy) => ({
+                  x: d.x,
+                  y: yy,
+                  date: d.date,
+                  idx,
+                }));
+              } else if (typeof d.y === 'number') {
+                return [
+                  {
+                    x: d.x,
+                    y: d.y,
+                    date: d.date,
+                    idx,
+                  },
+                ];
+              }
+              return []; // fallback nếu null/undefined
+            });
 
-            const minY = Math.min(...validData.map((d) => d.y!));
-            const maxY = Math.max(...validData.map((d) => d.y!));
+            const minY = Math.min(...validData.map((d) => d.y));
+            const maxY = Math.max(...validData.map((d) => d.y));
 
-            // Chọn 1 điểm duy nhất (điểm cuối cùng) để highlight
             const minPointData = [...validData]
               .reverse()
               .find((d) => d.y === minY);
@@ -927,7 +961,11 @@ export class HdsComponent implements OnInit {
           item.name = items[0].name || '';
           item.items = items;
           item.sample_type = sample_type;
-          this.pushChartFixedPosition(item, sample_type, sort_order);
+          if (!Utils.isEmpty(this.chartDetail)) {
+            this.chartDetail = item;
+          } else {
+            this.pushChartFixedPosition(item, sample_type, sort_order);
+          }
         }
         this.cdr.detectChanges();
       }),
@@ -955,7 +993,7 @@ export class HdsComponent implements OnInit {
       const dataTypes = Utils.getBodyTypeTopType(item._id.sample_type_group_id);
       body.body_type = dataTypes.body_type;
       body.top_type = dataTypes.top_type;
-      return this.getDateItemForChart(
+      return this.getDataItemForChart(
         body,
         item._id.sample_type_group_id,
         item.items,
