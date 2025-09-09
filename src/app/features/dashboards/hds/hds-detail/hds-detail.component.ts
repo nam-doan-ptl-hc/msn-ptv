@@ -3,8 +3,10 @@ import {
   Component,
   inject,
   Input,
+  OnChanges,
   OnInit,
   PLATFORM_ID,
+  SimpleChanges,
   ViewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -38,7 +40,7 @@ import { Utils } from '../../../../utils/utils';
   templateUrl: './hds-detail.component.html',
   styleUrls: ['./hds-detail.component.scss'],
 })
-export class HdsDetailComponent implements OnInit, AfterViewInit {
+export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @Input() changeViewDetail!: (group_type: string, item: any) => void;
   @Input() chartDetail: any;
@@ -63,7 +65,7 @@ export class HdsDetailComponent implements OnInit, AfterViewInit {
     'View Entire Month',
   ];
   totalRecords = 0;
-  pageSize = 2;
+  pageSize = 10;
 
   displayedColumns: string[] = ['value', 'date', 'type'];
   labels: string[] = initCharts.monthNames;
@@ -88,14 +90,9 @@ export class HdsDetailComponent implements OnInit, AfterViewInit {
       };
     });
   }
-  ngOnInit(): void {
-    if (this.isBrowser && !this.auth.isLoggedIn()) {
-      this.router.navigate(['/']);
-    }
+  private updateTableData() {
+    if (!this.chartDetail) return;
 
-    console.log('detailData in ngOnInit:', this.chartDetail);
-
-    // Chuyển data về dạng min-max
     const mappedData = Utils.inArray(
       this.chartDetail.sample_type,
       initCharts.minMaxCharts
@@ -103,18 +100,24 @@ export class HdsDetailComponent implements OnInit, AfterViewInit {
       ? this.mapMinMax(this.chartDetail.dataCharts[0].dataOrigin)
       : this.mapDatas(this.chartDetail.dataCharts[0].dataOrigin);
 
-    // Khởi tạo dataSource
     this.dataSource = new MatTableDataSource<any>(mappedData);
     this.totalRecords = mappedData.length;
 
-    // Gán paginator ngay sau khi tạo dataSource
     if (this.paginator) {
       this.dataSource.paginator = this.paginator;
     }
-
-    this.isLoading = false;
   }
-
+  ngOnInit(): void {
+    if (this.isBrowser && !this.auth.isLoggedIn()) {
+      this.router.navigate(['/']);
+    }
+    this.updateTableData();
+  }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['chartDetail'] && !changes['chartDetail'].firstChange) {
+      this.updateTableData();
+    }
+  }
   callChangeView(item: any) {
     const group_type = 'days';
     console.log('this.group_type:', this.group_type);

@@ -124,6 +124,7 @@ export class HdsComponent implements OnInit {
 
   public closeDetail(): void {
     this.chartDetail = null;
+    this.loadData();
   }
   public detailChart(item: any): void {
     this.chartDetail = item;
@@ -745,7 +746,6 @@ export class HdsComponent implements OnInit {
                 spanGaps: true,
                 parsing: { xAxisKey: 'x', yAxisKey: 'y' },
               });
-              console.log('item.items', item.items);
             }
             item.chartOptions = {
               responsive: true,
@@ -790,14 +790,18 @@ export class HdsComponent implements OnInit {
               };
             } else {
               scatterDataIndex = datas.flatMap((d) => {
-                if (Array.isArray(d.value)) {
-                  return d.value.map((v: number) => ({
+                if (Array.isArray(d.y)) {
+                  // nếu d.y là mảng số
+                  return d.y.map((v: number) => ({
                     x: d.x,
                     y: v,
                     date: d.date,
                   }));
+                } else if (typeof d.y === 'number') {
+                  // nếu d.y chỉ là 1 số
+                  return [{ x: d.x, y: d.y, date: d.date }];
                 }
-                return [{ x: d.x, y: d.y, date: d.date }];
+                return []; // fallback nếu null/undefined
               });
 
               xScale = this.xScale;
