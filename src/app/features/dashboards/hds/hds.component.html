@@ -159,6 +159,7 @@
         [chartDetail]="chartDetail"
         [changeViewDetail]="changeViewDetail"
         [group_type]="params.group_type"
+        [breadcrumbs]="breadcrumbs"
       ></hds-detail>
     </div>
 
@@ -224,7 +225,7 @@
                   <span class="ng-scope">
                     <span
                       class="md-caption ng-binding"
-                      (click)="detailChart(item)"
+                      (click)="fncDetailChart(item)"
                       style="cursor: pointer"
                       >View Data ></span
                     >

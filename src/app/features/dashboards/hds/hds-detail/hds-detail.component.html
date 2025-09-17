@@ -1,11 +1,17 @@
 <div id="wrapper-chart-detail">
   <div class="d-top d-flex justify-content-between">
     <div class="breadcrumb d-flex">
-      <p>Yearly View</p>
+      @for (item of breadcrumbs; track $index) { @if ($index > 0) {
       <p class="p-arrow">></p>
-      <p>Monthly View</p>
-      <p class="p-arrow">></p>
-      <p>Daily View</p>
+      } @if ($index < breadcrumbs.length-1) {
+      <p class="hover-pointer" (click)="changeViewInBreadcrumb(item, $index)">
+        {{ getNameBreadcrumb(item) }}
+      </p>
+      }@else {
+      <p>
+        {{ getNameBreadcrumb(item) }}
+      </p>
+      } }
     </div>
     <div class="d-flex">
       <img
@@ -15,17 +21,21 @@
       <h4 class="title-chart">{{ chartDetail.name }}</h4>
     </div>
     <div class="header-title-chart ng-scope d-flex justify-content-between">
-      <p class="latest-value ng-scope" style="color: #29bda8">
+      <!-- <p class="latest-value ng-scope" style="color: #29bda8">
         <span class="card-hd-text transform-capitalize" style="color: #29bda8"
           >Latest</span
         >
         <span class="s24">90</span
         ><span class="unit" style="color: #29bda8">bpm</span>
-      </p>
+      </p> -->
       <p>
-        <span class="card-hd-text">min/max</span>
-        <span class="s24">90</span>
-        <span class="md-body-2 gray-color">bpm</span>
+        <span class="card-hd-text">{{
+          chartDetail.items[0].snapshot_value_type
+        }}</span>
+        <span class="s24">{{ getValueAvg() }}</span>
+        <span class="md-body-2 gray-color">{{
+          chartDetail.items[0].primary_unit
+        }}</span>
       </p>
     </div>
   </div>
@@ -51,7 +61,7 @@
           {{ columnNames[0] }}
         </th>
         <td mat-cell *matCellDef="let element">
-          {{ element.value }}
+          {{ formatValueChart(element.value) }}
         </td>
       </ng-container>
       <ng-container matColumnDef="date">
@@ -66,6 +76,11 @@
         <th mat-header-cell *matHeaderCellDef class="text-center">
           {{ columnNames[2] }}
         </th>
+        @if(groupType === 'seconds') {
+        <td mat-cell *matCellDef="let element" class="text-center">
+          Masimo SafetyNet
+        </td>
+        } @else {
         <td
           mat-cell
           *matCellDef="let element"
@@ -77,6 +92,7 @@
             class="img-icon-arrow"
           />
         </td>
+        }
       </ng-container>
       <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
       <mat-row *matRowDef="let row; columns: displayedColumns"></mat-row>
