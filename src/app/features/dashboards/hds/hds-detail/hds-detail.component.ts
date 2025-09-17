@@ -126,7 +126,7 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       result = 'Yearly View';
       nameColum1 = 'Monthly';
       nameColum3 = 'View Entire Month';
-      this.groupType = 'days';
+      this.groupType = 'month';
     } else if (value === 'days' && item.textPickDate !== 'customDate') {
       if (item.textPickDate === 'thisWeek') {
         result = 'Weekly View';
@@ -235,10 +235,11 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     console.log('item:', item);
     let dateFrom: string = '';
     let dateTo: string = '';
-    if (this.groupType === 'months') {
+    if (this.groupType === 'month') {
       const monthRange = this.getMonthRangeLocal(item.date);
       dateFrom = monthRange.start + ' 00:00:00';
       dateTo = monthRange.end + ' 23:59:59';
+      this.groupType = 'days';
     } else if (this.groupType === 'days') {
       dateFrom = this.formatDate(item.date) + ' 00:00:00';
       dateTo = this.formatDate(item.date) + ' 23:59:59';

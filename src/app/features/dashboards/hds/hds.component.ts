@@ -552,7 +552,8 @@ export class HdsComponent implements OnInit {
       let key: string;
 
       if (labelsAreMonths) {
-        key = String(Number(d.x)); // "8" -> "8"
+        // year view: d.x là số 1–12 (tháng)
+        key = String(Number(d.x));
       } else if (labelsAreNumeric) {
         key = String(Number(d.x));
       } else if (labelsAreWeekdays) {
@@ -578,14 +579,18 @@ export class HdsComponent implements OnInit {
       index.set(key, bucket);
     }
 
+    // duyệt theo labels để giữ đúng index hiển thị
     for (let i = 0; i < labels.length; i++) {
       const lbl = labels[i];
       let key: string;
 
       if (labelsAreMonths) {
-        key = String(i + 1); // tháng 1 -> "1"
+        // tháng i (index 0) => key = i+1
+        key = String(i + 1);
       } else if (labelsAreNumeric) {
         key = String(Number(lbl));
+      } else if (labelsAreWeekdays) {
+        key = String(lbl).toUpperCase();
       } else {
         key = String(lbl);
       }
@@ -840,13 +845,17 @@ export class HdsComponent implements OnInit {
               date?: any;
             }[];
             let xScale: any;
+
+            // x = chính là label string (ví dụ: '31','1','2',...)
             scatterDataIndex = this.normalizeDatas(datas, this.labels);
+
             xScale = {
               type: 'category',
               labels: this.labels,
               offset: false,
               ticks: { stepSize: 1 },
             };
+
             // Trải phẳng nhưng giữ index
             const validData = scatterDataIndex.flatMap((d, idx) => {
               if (Array.isArray(d.y)) {
