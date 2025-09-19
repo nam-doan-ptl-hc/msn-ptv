@@ -25,14 +25,14 @@ export const minMaxLabelPlugin: Plugin<'scatter'> = {
         .map((d, idx) => ({ ...d, idx }))
         .filter((d) => d.y !== null);
 
-      if (!validData.length) return;
+      // Nếu < 3 điểm hợp lệ thì không vẽ min/max
+      if (validData.length < 3) return;
 
       // Tìm giá trị min/max
       const minY = Math.min(...validData.map((d) => d.y!));
       const maxY = Math.max(...validData.map((d) => d.y!));
 
-      // Chỉ lấy 1 điểm duy nhất để highlight
-      // Dùng reverse().find để lấy điểm cuối cùng xuất hiện trong dataset
+      // Lấy điểm cuối cùng ứng với min/max
       const minPointData = [...validData].reverse().find((d) => d.y === minY);
       const maxPointData = [...validData].reverse().find((d) => d.y === maxY);
 

@@ -85,6 +85,12 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     const sum = valid.reduce((acc, d) => acc + (d.y as number), 0);
     return Utils.roundDecimals(sum / valid.length, 1);
   }
+  public isShowForMinute(): boolean {
+    return Utils.inArray(
+      this.chartDetail.sample_type,
+      initCharts.isShowForMinute
+    );
+  }
   public getValueAvg(): string {
     if (Utils.inArray(this.chartDetail.sample_type, initCharts.minMaxCharts)) {
       const validData = this.chartDetail.dataCharts[0].data.flatMap(
@@ -117,6 +123,14 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       return this.calcAverage(this.chartDetail.dataCharts[0].data).toString();
     }
   }
+  public showTimeInLocal(dateStr: string): string {
+    return Utils.getDateString(
+      Utils.parseDateToLocale(dateStr),
+      this.groupType === 'minute' || this.groupType === 'second'
+        ? 'M d, H:i:s'
+        : 'MM dd, yyyy'
+    );
+  }
   public getNameBreadcrumb(item: any): string {
     let result = 'Custom View',
       nameColum1 = 'Daily',
@@ -139,13 +153,13 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     } else if (value === 'hour') {
       result = 'Daily View';
       nameColum1 = '';
-      nameColum3 = 'View Entire Hour';
-      this.groupType = 'minutes';
-    } else if (value === 'minutes') {
+      nameColum3 = this.isShowForMinute() ? 'View Entire Hour' : 'Source';
+      this.groupType = 'minute';
+    } else if (value === 'minute') {
       result = 'Hour View';
       nameColum1 = '';
       nameColum3 = 'Source';
-      this.groupType = 'seconds';
+      this.groupType = 'second';
     }
     this.columnNames[0] =
       nameColum1 +
@@ -158,9 +172,18 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
   }
   private mapMinMax(datas: any): any[] {
     if (!datas?.length) return [];
+
     return datas.map((d: any) => {
-      const min = Math.min(...d.y);
-      const max = Math.max(...d.y);
+      let min: number;
+      let max: number;
+
+      if (Array.isArray(d.y)) {
+        min = Math.min(...d.y);
+        max = Math.max(...d.y);
+      } else {
+        min = max = d.y;
+      }
+
       return {
         value: `${min}-${max}`,
         date: d.date,
@@ -230,6 +253,30 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
 
     return { start: fmt(start), end: fmt(end) };
   }
+  formatDateRange(dateStr: string): { from: string; to: string } {
+    const re = /^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/;
+    const m = dateStr.trim().match(re);
+    if (!m)
+      throw new Error(
+        "Invalid format. Expect 'YYYY-MM-DD HH:mm' or 'YYYY-MM-DD HH:mm:ss'"
+      );
+
+    const [, datePart, hourS, minuteS] = m;
+    const hour = parseInt(hourS, 10);
+    const minute = parseInt(minuteS, 10);
+
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      throw new Error('Invalid time value');
+    }
+
+    const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
+    const from = `${datePart} ${pad2(hour)}:${pad2(minute)}:00`;
+    const to = `${datePart} ${pad2(hour)}:59:59`;
+
+    return { from, to };
+  }
+
   callChangeView(item: any) {
     console.log('this.group_type:', this.groupType);
     console.log('item:', item);
@@ -246,6 +293,10 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     } else if (this.groupType === 'hour') {
       dateFrom = this.formatDate(item.date) + ' 00:00:00';
       dateTo = this.formatDate(item.date) + ' 23:59:59';
+    } else if (this.groupType === 'minute') {
+      const dataeRange = this.formatDateRange(item.date);
+      dateFrom = dataeRange.from;
+      dateTo = dataeRange.to;
     }
     if (this.changeViewDetail) {
       // Clone sâu chartDetail để tránh thay đổi tham chiếu

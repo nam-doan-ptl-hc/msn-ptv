@@ -8,6 +8,7 @@ export const initCharts = {
   line2Charts: ['BP'],
   lineCharts: ['O2S', 'BODY_TEMPER', 'PPI', 'PVi', 'WEIGHT', 'R2'],
   barCharts: ['STEP', 'STEP_AZ'],
+  isShowForMinute: ['HR', 'O2S', 'R2', 'PPI', 'PVi', 'BODY_TEMPER'],
   minMaxCharts: ['HR'],
   sampleTypeShowCharts: [
     'O2S',

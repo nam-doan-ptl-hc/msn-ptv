@@ -30,4 +30,8 @@ export class DashboardService {
   loadHDSSharedSamples4ChartView(body: any) {
     return this.api.postFormEncoded('/loadHDSSharedSamples4ChartView', body);
   }
+
+  loadHDSSharedSamples4TblView(body: any) {
+    return this.api.postFormEncoded('/loadHDSSharedSamples4TblView', body);
+  }
 }

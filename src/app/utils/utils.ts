@@ -682,10 +682,10 @@ export class Utils {
   }
 
   // Hàm kiểm tra tính hợp lệ của Date
-  private isValidDate(date: Date): boolean {
+  isValidDate(date: Date): boolean {
     return date instanceof Date && !isNaN(date.getTime());
   }
-  parseDateToLocale(date: any, def: any = new Date('1900-01-01')): any {
+  static parseDateToLocale(date: any, def: any = new Date('1900-01-01')): any {
     // Xử lý giá trị mặc định
     if (typeof def === 'undefined') {
       def = new Date('1900-01-01');
@@ -742,7 +742,9 @@ export class Utils {
         const offset = newDate.getTimezoneOffset();
         const adjustedDate = new Date(newDate.getTime() - offset * 60 * 1000);
 
-        return this.isValidDate(adjustedDate) ? adjustedDate : def;
+        return adjustedDate instanceof Date && !isNaN(adjustedDate.getTime())
+          ? adjustedDate
+          : def;
       } catch (ex) {
         console.error('Error parsing date:', ex);
         return def;
