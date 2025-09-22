@@ -1,0 +1,95 @@
+<div id="div-table">
+  <div class="left">
+    <div class="fixed">
+      <div class="d-flex div-user">
+        <img class="img-avata" src="/assets/images/patient_default_photo.svg" />
+        <div class="clearfix u-info">
+          <p class="title">{{ getNameAccount() }}</p>
+          <p class="date">{{ user?.email }}</p>
+        </div>
+      </div>
+      <div id="div-menu">
+        <ul>
+          <li>All</li>
+          @for(item of menuLeft; track item.value) {
+          <li (click)="filterByCategory(item.value)">
+            <img [src]="item.icon" class="img-icon-menu" />
+            <span class="text-menu">{{ item.value }}</span>
+          </li>
+          }
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="div-title">
+      <div class="fl">
+        <strong class="ng-binding">Samples </strong>
+        <span class="cl8383 in-bl ng-binding"
+          >Showing samples from all categories</span
+        >
+      </div>
+      <div class="d-flex">
+        <input
+          type="text"
+          placeholder="Filter by"
+          class="form-control input-search"
+          [(ngModel)]="filterValue"
+          (keyup.enter)="applyFilterText()"
+        />
+      </div>
+    </div>
+    <div id="table-data">
+      <table
+        mat-table
+        *ngIf="!isLoading"
+        [dataSource]="dataSource"
+        matSort
+        class="mat-elevation-z8 table-dashboard"
+      >
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            {{ columnNames[0] }}
+          </th>
+          <td mat-cell *matCellDef="let element">
+            <div class="d-flex align-items-center">
+              <img
+                class="img-icon"
+                src="/assets/images/icon-sample-type/{{ element.iconChart }}"
+              />
+              <span>{{ element.name }}</span>
+            </div>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="value">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>
+            {{ columnNames[1] }}
+          </th>
+          <td mat-cell *matCellDef="let element">
+            <div class="d-flex align-items-center">{{ element.value }}</div>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="date" class="text-center">
+          <th mat-header-cell *matHeaderCellDef class="text-center">
+            {{ columnNames[2] }}
+          </th>
+          <td mat-cell *matCellDef="let element" class="text-center">
+            <div class="d-flex align-items-center justify-content-center">
+              {{ element.date }}
+            </div>
+          </td>
+        </ng-container>
+        <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+        <mat-row *matRowDef="let row; columns: displayedColumns"></mat-row>
+      </table>
+      <div class="d-flex justify-content-end" *ngIf="!isLoading">
+        <mat-paginator
+          [length]="totalRecords"
+          [pageSize]="pageSize"
+          showFirstLastButtons
+        >
+        </mat-paginator>
+      </div>
+    </div>
+  </div>
+</div>

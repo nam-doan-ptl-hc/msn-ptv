@@ -44,23 +44,12 @@
   <mat-date-range-picker #picker></mat-date-range-picker>
 </div>
 <div id="wrapper-hds">
-  <div *ngIf="!isViewChart" id="div-table">
-    <div class="left">
-      <div class="fixed">
-        <div class="d-flex div-user">
-          <img
-            class="img-avata"
-            src="/assets/images/patient_default_photo.svg"
-          />
-          <div class="clearfix u-info">
-            <p class="title ng-binding">{{ getNameAccount() }}</p>
-            <p class="date ng-binding">{{ user.email }}</p>
-            <p class="date ng-binding ng-hide"></p>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="right"></div>
+  <div *ngIf="!isViewChart">
+    <hds-data-view
+      [getNameAccount]="getNameAccount"
+      [user]="user"
+      [charts]="charts"
+    ></hds-data-view>
   </div>
   <div *ngIf="isViewChart">
     <div class="row">

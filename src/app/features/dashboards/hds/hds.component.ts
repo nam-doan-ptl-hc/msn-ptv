@@ -25,6 +25,7 @@ import {
   crosshairLine,
 } from '../../../../plugins/chart-plugins';
 import { HdsDetailComponent } from './hds-detail/hds-detail.component';
+import { HdsDataViewComponent } from './hds-data-view/hds-data-view.component';
 
 Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
 type DataPoint = {
@@ -50,6 +51,7 @@ type NormalizedPoint = {
     MatNativeDateModule,
     ReactiveFormsModule,
     HdsDetailComponent,
+    HdsDataViewComponent,
   ],
   templateUrl: './hds.component.html',
   providers: [DatePipe],
@@ -102,6 +104,23 @@ export class HdsComponent implements OnInit {
       (!Utils.isEmpty(this.user.last_name) ? this.user.last_name : '')
     );
   }
+  getNameAccount1 = (
+    group_type: string,
+    item: any,
+    dateFrom: string,
+    dateTo: string
+  ) => {
+    console.log('this.params.group_type', group_type);
+    console.log('dateFrom', dateFrom);
+    console.log('dateTo', dateTo);
+    console.log('item chart', item);
+    console.log('breadcrumbs', this.breadcrumbs);
+    this.labels = this.generateXAxisLabels(dateFrom, dateTo, group_type);
+    this.textPickDate = group_type;
+    this.isChangeViewDetail = true;
+    this.loadChartDetail(dateFrom, dateTo, group_type).toPromise();
+    // thực hiện logic thay đổi view
+  };
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
   }
@@ -1208,10 +1227,15 @@ export class HdsComponent implements OnInit {
     );
     const entry = { ...item, _pos };
 
-    if (idx >= 0) this.charts[idx] = entry;
-    else this.charts.push(entry);
+    let newCharts: any[];
 
-    this.charts.sort((a: any, b: any) => {
+    if (idx >= 0) {
+      newCharts = this.charts.map((c, i) => (i === idx ? entry : c));
+    } else {
+      newCharts = [...this.charts, entry];
+    }
+
+    newCharts.sort((a: any, b: any) => {
       const da = a._pos ?? Number.POSITIVE_INFINITY;
       const db = b._pos ?? Number.POSITIVE_INFINITY;
       if (da !== db) return da - db;
@@ -1219,6 +1243,8 @@ export class HdsComponent implements OnInit {
       const idb = b._id?.sample_type_group_id ?? '';
       return ida.localeCompare(idb);
     });
+
+    this.charts = [...newCharts];
   }
 
   get chunkedSampleTypes() {
@@ -1255,7 +1281,9 @@ export class HdsComponent implements OnInit {
           });
           return;
         }
-        this.sampleTypes = res.data || [];
+        //this.sampleTypes = res.data || [];
+        this.sampleTypes = [...(res.data || [])];
+        console.log('sampleTypes', this.sampleTypes);
         const sample_type = this.sampleTypes
           .filter((e: any) => e.web_chart_pos === 1 || e.web_chart_pos === 3)
           .map((e: any) => ({
