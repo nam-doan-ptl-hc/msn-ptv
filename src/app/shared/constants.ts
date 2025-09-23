@@ -6,7 +6,7 @@ export const initGrDetailPage = {
 };
 export const initCharts = {
   line2Charts: ['BP'],
-  lineCharts: ['O2S', 'BODY_TEMPER', 'PPI', 'PVi', 'WEIGHT', 'R2'],
+  lineCharts: ['O2S', 'BODY_TEMPER', 'PPI', 'PVi', 'WEIGHT', 'R2', 'HEIGHT'],
   barCharts: ['STEP', 'STEP_AZ'],
   isShowForMinute: ['HR', 'O2S', 'R2', 'PPI', 'PVi', 'BODY_TEMPER'],
   minMaxCharts: ['HR'],
@@ -33,6 +33,7 @@ export const initCharts = {
     'WALKING_HR_AVG',
     'HF_TREND',
     'AHAG',
+    'HEIGHT',
   ],
   //monthNames: ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'],
   monthNames: [

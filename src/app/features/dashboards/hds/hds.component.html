@@ -49,6 +49,7 @@
       [getNameAccount]="getNameAccount"
       [user]="user"
       [charts]="charts"
+      [fncDetailChart]="fncDetailChart"
     ></hds-data-view>
   </div>
   <div *ngIf="isViewChart">
@@ -146,13 +147,13 @@
                     type="button"
                     style="cursor: pointer"
                   >
-                    <span class="ng-scope"
-                      ><span
-                        class="md-caption ng-binding"
-                        style="cursor: pointer"
-                        >View Data ></span
-                      >
-                    </span>
+                    <span class="ng-scope"></span>
+                    <span
+                      class="md-caption ng-binding"
+                      (click)="fncDetailChart(item.id, true)"
+                      style="cursor: pointer"
+                      >View Data ></span
+                    >
                   </button>
                 </div>
               </div>
@@ -197,7 +198,12 @@
                   layout="row"
                   layout-align="space-between center"
                 >
-                  @if (item?.avg) {
+                  @if (item?.min_max) {
+                  <span class="s24 ng-binding">{{ item?.min_max }}</span>
+                  <span class="unit ng-binding">{{
+                    item.items[0].primary_unit
+                  }}</span>
+                  } @else if (item?.avg) {
                   <span class="card-hd-text ng-binding">avg</span>
                   <span class="s24 ng-binding">{{ item?.avg }}</span>
                   <span class="unit ng-binding">{{

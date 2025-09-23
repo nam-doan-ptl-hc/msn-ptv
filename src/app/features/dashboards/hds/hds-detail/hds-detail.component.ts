@@ -76,14 +76,19 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
   groupType = 'days';
   displayedColumns: string[] = ['value', 'date', 'type'];
   labels: string[] = initCharts.monthNames;
-  calcAverage(datas: { x: string; y: number | null; date: string }[]): number {
+  calcAverage(
+    datas: { x: string; y: number | null; date: string }[]
+  ): number | string {
     if (!datas || datas.length === 0) return 0;
 
     const valid = datas.filter((d) => d.y !== null && d.y !== undefined);
     if (valid.length === 0) return 0;
 
     const sum = valid.reduce((acc, d) => acc + (d.y as number), 0);
-    return Utils.roundDecimals(sum / valid.length, 1);
+    const valueAvg = sum / valid.length;
+    return this.chartDetail.sample_type === 'HEIGHT'
+      ? Utils.convertUnit.showHeightInch(valueAvg)
+      : Utils.roundDecimals(valueAvg, 1);
   }
   public isShowForMinute(): boolean {
     return Utils.inArray(
@@ -226,11 +231,35 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     if (changes['chartDetail'] && !changes['chartDetail'].firstChange) {
       this.updateTableData();
     }
+    if (changes['chartDetail'] && this.chartDetail) {
+      const sampleType = this.chartDetail?.sample_type;
+      this.chartDetail.chartOptions.plugins.tooltip.callbacks.title = (
+        context: any
+      ) => {
+        return '';
+      };
+      if (sampleType === 'HEIGHT') {
+        this.chartDetail.chartOptions.scales.y.ticks.callback = (
+          value: any
+        ) => {
+          return `${Math.floor(Number(value))}'`; // hiển thị 3', 4', 5'
+        };
+        this.chartDetail.chartOptions.plugins.tooltip.callbacks.label = (
+          context: any
+        ) => {
+          const val = context.raw?.y ?? context.parsed?.y;
+          return Utils.convertUnit.showHeightInch(val); // chuyển 3.94 -> 3' 11"
+        };
+      }
+    }
   }
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
   }
   formatValueChart(value: any): number | any {
+    if (this.chartDetail.sample_type === 'HEIGHT') {
+      return Utils.convertUnit.showHeightInch(value);
+    }
     if (typeof value === 'number' && !isNaN(value)) {
       return Utils.roundDecimals(value, 1);
     }
@@ -309,6 +338,9 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     this.breadcrumbs = this.breadcrumbs.slice(0, index + 1);
     this.chartDetail = item;
     this.updateTableData();
+  }
+  checkHasItemInChart(data: any[]) {
+    return data.some((item) => item.y !== null && item.y !== undefined);
   }
   ngAfterViewInit(): void {
     // Đảm bảo paginator được gán nếu dataSource thay đổi

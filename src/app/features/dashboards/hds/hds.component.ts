@@ -104,23 +104,6 @@ export class HdsComponent implements OnInit {
       (!Utils.isEmpty(this.user.last_name) ? this.user.last_name : '')
     );
   }
-  getNameAccount1 = (
-    group_type: string,
-    item: any,
-    dateFrom: string,
-    dateTo: string
-  ) => {
-    console.log('this.params.group_type', group_type);
-    console.log('dateFrom', dateFrom);
-    console.log('dateTo', dateTo);
-    console.log('item chart', item);
-    console.log('breadcrumbs', this.breadcrumbs);
-    this.labels = this.generateXAxisLabels(dateFrom, dateTo, group_type);
-    this.textPickDate = group_type;
-    this.isChangeViewDetail = true;
-    this.loadChartDetail(dateFrom, dateTo, group_type).toPromise();
-    // thực hiện logic thay đổi view
-  };
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
   }
@@ -156,22 +139,40 @@ export class HdsComponent implements OnInit {
     });
   }
 
-  public changeView(): void {
-    this.isViewChart = !this.isViewChart;
-  }
   public closeDetail(): void {
     this.chartDetail = null;
+    const textPickDate = this.breadcrumbs[0].textPickDate;
     this.breadcrumbs = [];
-    this.loadData();
+    if (textPickDate === 'customDate') {
+      this.loadData(6, {
+        dateFrom: this.params.dateFrom,
+        dateTo: this.params.dateTo,
+      });
+    } else {
+      if (textPickDate === 'today') this.pickDate(1);
+      else if (textPickDate === 'thisWeek') this.pickDate(2);
+      else if (textPickDate === 'thisMonth') this.pickDate(3);
+      else if (textPickDate === 'last30days') this.pickDate(4);
+      else if (textPickDate === 'thisYear') this.pickDate(5);
+    }
   }
-  public fncDetailChart(item: any): void {
-    // Clone sâu params để tránh thay đổi đồng loạt
-    const clonedItem = JSON.parse(JSON.stringify(item));
+
+  public changeView = (): void => {
+    this.isViewChart = !this.isViewChart;
+  };
+
+  public fncDetailChart = (item: any, isSnapShot: boolean = false): void => {
+    let clonedItem = JSON.parse(JSON.stringify(item));
+    if (isSnapShot) {
+      this.breadcrumbs = [];
+      const found = this.charts.find((c) => c.sample_type === item);
+      clonedItem = JSON.parse(JSON.stringify(found));
+    }
     this.chartDetail = clonedItem;
 
-    // Push một bản copy khác vào breadcrumbs
     this.breadcrumbs.push(JSON.parse(JSON.stringify(clonedItem)));
-  }
+    this.isViewChart = true;
+  };
   private loadChartDetail(
     dateFrom?: string,
     dateTo?: string,
@@ -252,7 +253,7 @@ export class HdsComponent implements OnInit {
 
     return labels;
   }
-  async pickDate(data: number) {
+  async pickDate(data: number, options: any = {}) {
     const today = new Date();
     this.charts = [];
     switch (data) {
@@ -309,6 +310,12 @@ export class HdsComponent implements OnInit {
         this.params.dateTo = this.formatDate(endOfYear) + ' 23:59:59';
         this.params.group_type = 'months';
         this.textPickDate = 'thisYear';
+        break;
+      case 6:
+        this.params.dateFrom = options.dateFrom;
+        this.params.dateTo = options.dateTo;
+        this.params.group_type = 'days';
+        this.textPickDate = 'customDate';
         break;
     }
     this.charts = [];
@@ -422,19 +429,22 @@ export class HdsComponent implements OnInit {
   };
 
   // Tooltip hiển thị đúng theo group_type
-  tooltipOpts: any = {
-    displayColors: false,
-    callbacks: {
-      title: (items: any) => {
-        const raw = items[0]?.raw;
-        // Ưu tiên xLabel nếu có, fallback sang x
-        return raw?.xLabel ?? raw?.x ?? '';
+  tooltipOpts(sample_type: string = ''): any {
+    return {
+      displayColors: false,
+      callbacks: {
+        title: () => {
+          return '';
+        },
+        label: (context: any) => {
+          if (sample_type === 'HEIGHT') {
+            return Utils.convertUnit.showHeightInch(context.raw.y);
+          }
+          return Utils.roundDecimals(context.raw.y, 1);
+        },
       },
-      label: (context: any) => {
-        return Utils.roundDecimals(context.raw.y, 1);
-      },
-    },
-  };
+    };
+  }
   generateXAxisLabels(
     dateFrom?: string,
     dateTo?: string,
@@ -787,11 +797,29 @@ export class HdsComponent implements OnInit {
       }
     }
     //item.dataCharts = datas;
-    item.avg = Utils.roundDecimals(res.data[0]?.avg || 0, 1);
+    if (
+      res.data.length > 0 &&
+      Utils.inArray(res.data[0]._id, initCharts.minMaxCharts)
+    ) {
+      item.min_max =
+        res.data[0]?.items.length === 1
+          ? res.data[0].min
+          : res.data[0].min + ' - ' + res.data[0].max;
+    } else {
+      item.avg = res.data[0]?.total
+        ? Utils.formatNumber(res.data[0]?.total)
+        : Utils.roundDecimals(res.data[0]?.avg || 0, 1);
+    }
     item.iconChart =
       'ic-' + sample_type.toLowerCase().replace(/_/g, '-') + '-st.svg';
-    const cstMin = Utils.roundDecimals(min - 20, 0);
-    const cstMax = Utils.roundDecimals(max + 20, 0);
+    const cstMin = Utils.roundDecimals(
+      min - (sample_type === 'HEIGHT' ? 2 : 20),
+      0
+    );
+    const cstMax = Utils.roundDecimals(
+      max + (sample_type === 'HEIGHT' ? 2 : 20),
+      0
+    );
     if (Utils.inArray(sample_type, initCharts.sampleTypeShowCharts)) {
       if (Utils.inArray(sample_type, initCharts.lineCharts)) {
         // 1.1=== line chart ===
@@ -822,15 +850,26 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts,
+            tooltip: this.tooltipOpts(sample_type),
           },
           scales: {
             x: scatterDataIndex.xScale,
             y: {
+              type: 'linear',
               min: cstMin < 0 ? 0 : cstMin,
               max: cstMax,
+              ticks: {
+                stepSize: sample_type === 'HEIGHT' ? 1 : 5,
+                callback: (value: any) => {
+                  if (sample_type === 'HEIGHT') {
+                    return `${Math.floor(Number(value))}'`;
+                  }
+                  return value;
+                },
+              },
             },
           },
+          onResize: () => console.log('chart resized, redraw...'),
         };
 
         item.chartType = 'line';
@@ -838,9 +877,6 @@ export class HdsComponent implements OnInit {
         // 1.2=== line 2 chart ===
 
         const scatterDataIndex = this.buildChartData(datas);
-        console.log('datas', datas);
-        console.log('scatterDataIndex', scatterDataIndex);
-        console.log('labels', this.labels);
         let color = items[0].chart_icon_color[0];
         item.dataCharts = [
           {
@@ -888,7 +924,7 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts,
+            tooltip: this.tooltipOpts(),
           },
           scales: {
             x: scatterDataIndex.xScale,
@@ -981,7 +1017,7 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts,
+            tooltip: this.tooltipOpts(),
           },
           scales: {
             x: xScale,
@@ -1011,7 +1047,7 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts,
+            tooltip: this.tooltipOpts(),
           },
           scales: {
             x: {
@@ -1050,7 +1086,7 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts,
+            tooltip: this.tooltipOpts(),
           },
           scales: {
             x: scatterDataIndex.xScale,
@@ -1061,7 +1097,6 @@ export class HdsComponent implements OnInit {
           },
         };
       }
-      //console.log('charts item:', item);
       // ĐẢM BẢO item có thuộc tính data với cấu trúc đúng
       item.data = {
         labels: [], // Khởi tạo mảng labels rỗng
@@ -1249,8 +1284,11 @@ export class HdsComponent implements OnInit {
 
   get chunkedSampleTypes() {
     const chunks = [];
-    for (let i = 0; i < this.charts.length; i += 3) {
-      chunks.push(this.charts.slice(i, i + 3));
+    const charts = this.charts.filter(
+      (chart) => chart.sample_type !== 'HEIGHT'
+    );
+    for (let i = 0; i < charts.length; i += 3) {
+      chunks.push(charts.slice(i, i + 3));
     }
     return chunks;
   }
@@ -1259,7 +1297,7 @@ export class HdsComponent implements OnInit {
     return Utils.getStringTimeSync(date);
   }
 
-  loadData() {
+  loadData(datePicker: number = 1, options: any = {}) {
     if (!isPlatformBrowser(this.platformId)) return;
     this.isBrowser = isPlatformBrowser(this.platformId);
     const userInfoStr = localStorage.getItem('user_info');
@@ -1281,9 +1319,7 @@ export class HdsComponent implements OnInit {
           });
           return;
         }
-        //this.sampleTypes = res.data || [];
         this.sampleTypes = [...(res.data || [])];
-        console.log('sampleTypes', this.sampleTypes);
         const sample_type = this.sampleTypes
           .filter((e: any) => e.web_chart_pos === 1 || e.web_chart_pos === 3)
           .map((e: any) => ({
@@ -1292,7 +1328,7 @@ export class HdsComponent implements OnInit {
           }));
         this.dataSnapshots = sample_type;
         this.loadData4SnapshotCard(sample_type);
-        this.pickDate(1);
+        this.pickDate(datePicker, options);
       },
       error: (err) => {
         console.error('Lỗi khi tải dashboard:', err);

@@ -21,32 +21,35 @@
       <h4 class="title-chart">{{ chartDetail.name }}</h4>
     </div>
     <div class="header-title-chart ng-scope d-flex justify-content-between">
-      <!-- <p class="latest-value ng-scope" style="color: #29bda8">
-        <span class="card-hd-text transform-capitalize" style="color: #29bda8"
-          >Latest</span
-        >
-        <span class="s24">90</span
-        ><span class="unit" style="color: #29bda8">bpm</span>
-      </p> -->
       <p>
         <span class="card-hd-text">{{
           chartDetail.items[0].snapshot_value_type
         }}</span>
         <span class="s24">{{ getValueAvg() }}</span>
         <span class="md-body-2 gray-color">{{
-          chartDetail.items[0].primary_unit
+          chartDetail.sample_type !== "HEIGHT"
+            ? chartDetail.items[0].primary_unit
+            : ""
         }}</span>
       </p>
     </div>
   </div>
   <div style="display: block; width: 100%; height: 410px">
-    <canvas
-      baseChart
-      [data]="{ labels: labels, datasets: chartDetail.dataCharts }"
-      [options]="chartDetail.chartOptions"
-      [type]="chartDetail.chartType"
-      style="display: block; width: 100%; height: 410px"
-    ></canvas>
+    @if (checkHasItemInChart(chartDetail.dataCharts[0]?.data)) {
+    <div class="div-wrapper-chart">
+      <canvas
+        baseChart
+        [data]="{ labels: labels, datasets: chartDetail.dataCharts }"
+        [options]="chartDetail.chartOptions"
+        [type]="chartDetail.chartType"
+        style="display: block; width: 100%; height: 410px"
+      ></canvas>
+    </div>
+    } @else {
+    <p class="d-flex justify-content-center align-items-center p-no-data">
+      No data available for selected period
+    </p>
+    }
   </div>
   <div id="div-table">
     <table

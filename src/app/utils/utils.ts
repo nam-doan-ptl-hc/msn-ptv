@@ -249,7 +249,19 @@ export class Utils {
 
     return `${month} ${day}, ${hours}:${minutes}`;
   }
+  static formatNumber(val: any): string | number | null | undefined {
+    if (val === null || val === undefined || val === '') return val;
 
+    const symbol = { thousand: ',', decimal: '.' };
+
+    const num = Number(val);
+    if (isNaN(num)) return val;
+
+    const parts = num.toString().split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, symbol.thousand);
+
+    return parts.join(symbol.decimal);
+  }
   static roundDecimals(value: number, decimals: number = 5): number {
     if (this.isEmpty(value)) return value;
     if (!Number.isInteger(decimals)) decimals = parseInt(decimals as any);
@@ -450,32 +462,22 @@ export class Utils {
 
       return result;
     },
-    showHeightInch: (value: number): string => {
-      let convertHeightData = value.toString();
-      const splitV = convertHeightData.split('.');
+    showHeightInch(value: number): string {
+      if (value === null || value === undefined || isNaN(Number(value)))
+        return '';
+      let num = Number(value);
 
-      if (splitV.length > 0) {
-        convertHeightData = splitV[0] + "' ";
+      // xử lý khi giá trị đã ở dạng inches? (nếu cần) - ở đây giả định num là feet.decimal
+      let feet = Math.floor(num);
+      let inches = Math.round((num - feet) * 12);
 
-        if (splitV[1] !== undefined && !this.isEmpty(splitV[1])) {
-          const cInch = '0.' + splitV[1];
-          const inch = this.convertUnit.distanceLength(
-            parseFloat(cInch),
-            'ft',
-            'in',
-            { decimals: 0 }
-          );
-
-          if (inch !== false) {
-            convertHeightData += inch + '"';
-          } else {
-            // fallback nếu convert không được
-            convertHeightData += '0"';
-          }
-        }
+      // nếu rounding làm inches == 12 thì tăng feet 1 và set inches = 0
+      if (inches === 12) {
+        feet += 1;
+        inches = 0;
       }
 
-      return convertHeightData;
+      return `${feet}' ${inches}"`;
     },
   };
 

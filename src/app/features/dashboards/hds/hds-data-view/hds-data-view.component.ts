@@ -14,7 +14,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../../../../services/AuthService';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
-import { BaseChartDirective } from 'ng2-charts';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -43,6 +42,7 @@ import { initCharts } from '../../../../shared/constants';
 export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @Input() getNameAccount!: () => void;
+  @Input() fncDetailChart!: (item: any, isSnapShot?: boolean) => void;
   @Input() user: any;
   @Input() charts: any[] = [];
   private platformId = inject(PLATFORM_ID);
@@ -62,7 +62,7 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
   totalRecords = 0;
   pageSize = 10;
   filterValue = '';
-  displayedColumns: string[] = ['name', 'value', 'date'];
+  displayedColumns: string[] = ['name', 'value', 'date', 'sample_type'];
   groupHdsSampleCateTypes(): { value: string; icon: string }[] {
     let newArr: string[] = [];
 
@@ -105,6 +105,14 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
         value = c.items[0].primary_unit
           ? c.avg + ' ' + c.items[0].primary_unit
           : 'avg ' + c.avg;
+      } else if (firstPoint?.y) {
+        if (c.sample_type === 'HEIGHT') {
+          value = Utils.convertUnit.showHeightInch(firstPoint.y);
+        } else {
+          value = c.items[0].primary_unit
+            ? firstPoint.y + ' ' + c.items[0].primary_unit
+            : 'avg ' + firstPoint.y;
+        }
       } else {
         value = 'avg ' + c.items[0].primary_unit;
       }
@@ -113,6 +121,7 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
           'ic-' + c.sample_type.toLowerCase().replace(/_/g, '-') + '-st.svg',
         name: c.name,
         value: value,
+        sample_type: c.sample_type,
         date: firstPoint?.date ?? null,
       };
     });
@@ -135,7 +144,7 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['charts']) {
       this.menuLeft = this.groupHdsSampleCateTypes();
-      console.log('this.menuLeft:', this.menuLeft);
+      this.updateTableData();
       console.log('this.charts:', this.charts);
     }
   }
@@ -145,6 +154,7 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
       this.dataSource.paginator.firstPage();
     }
   }
+
   filterByCategory(cate: string) {
     if (!cate) {
       this.dataSource.data = [];
