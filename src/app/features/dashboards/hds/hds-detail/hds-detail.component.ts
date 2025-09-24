@@ -250,6 +250,13 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
           const val = context.raw?.y ?? context.parsed?.y;
           return Utils.convertUnit.showHeightInch(val); // chuyển 3.94 -> 3' 11"
         };
+      } else if (sampleType === 'STEP') {
+        this.chartDetail.chartOptions.plugins.tooltip.callbacks.label = (
+          context: any
+        ) => {
+          const val = context.raw?.y ?? context.parsed?.y;
+          return Utils.formatNumber(val);
+        };
       }
     }
   }

@@ -158,6 +158,7 @@ export class HdsComponent implements OnInit {
   }
 
   public changeView = (): void => {
+    if (this.isViewChart) this.closeDetail();
     this.isViewChart = !this.isViewChart;
   };
 
@@ -439,6 +440,9 @@ export class HdsComponent implements OnInit {
         label: (context: any) => {
           if (sample_type === 'HEIGHT') {
             return Utils.convertUnit.showHeightInch(context.raw.y);
+          }
+          if (sample_type === 'STEP') {
+            return Utils.formatNumber(context.raw.y);
           }
           return Utils.roundDecimals(context.raw.y, 1);
         },
@@ -1047,7 +1051,7 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts(),
+            tooltip: this.tooltipOpts(sample_type),
           },
           scales: {
             x: {
