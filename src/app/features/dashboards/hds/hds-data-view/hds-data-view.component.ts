@@ -100,17 +100,26 @@ export class HdsDataViewComponent implements OnInit, AfterViewInit, OnChanges {
   private updateTableData() {
     const mappedData = this.charts.map((c: any) => {
       const firstPoint = c.dataCharts?.[0]?.data?.[0] || null;
-      let value = '';
+      let value: any = '';
       if (c.avg) {
-        value = c.items[0].primary_unit
-          ? c.avg + ' ' + c.items[0].primary_unit
-          : 'avg ' + c.avg;
+        const unit = Utils.showUnit(c.sample_type, c.items[0].primary_unit);
+        value = c.items[0].primary_unit ? c.avg + ' ' + unit : 'avg ' + c.avg;
       } else if (firstPoint?.y) {
         if (c.sample_type === 'HEIGHT') {
-          value = Utils.convertUnit.showHeightInch(firstPoint.y);
+          const unit = Utils.getUserUnits();
+          if (unit?.height === 'ft') {
+            value = Utils.convertUnit.showHeightInch(firstPoint.y);
+          } else {
+            value =
+              Utils.formatValueByUnit(c.sample_type, firstPoint.y) +
+              ' ' +
+              unit?.height;
+          }
         } else {
           value = c.items[0].primary_unit
-            ? firstPoint.y + ' ' + c.items[0].primary_unit
+            ? Utils.formatValueByUnit(c.sample_type, firstPoint.y) +
+              ' ' +
+              Utils.showUnit(c.sample_type, c.items[0].primary_unit)
             : 'avg ' + firstPoint.y;
         }
       } else {

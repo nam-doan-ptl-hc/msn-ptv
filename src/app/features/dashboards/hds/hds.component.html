@@ -8,7 +8,7 @@
       <button (click)="changeView()">
         {{ isViewChart ? "View Data" : "View Chart" }}
       </button>
-      <button (click)="loadData()">Refresh</button>
+      <button (click)="refresh()">Refresh</button>
     </div>
 
     <div class="toolbar-right">
@@ -116,9 +116,9 @@
                       style="cursor: pointer"
                       >{{ item.value }}</span
                     >
-                    @if(item.id != 'HEIGHT') {
-                    <span class="unit ng-binding">{{ item.unit }}</span
-                    >}
+                    <span class="unit ng-binding">{{
+                      showUnit(item.id, item.unit)
+                    }}</span>
                   </p>
                 </div>
               </div>
@@ -200,16 +200,14 @@
                 >
                   @if (item?.min_max) {
                   <span class="s24 ng-binding">{{ item?.min_max }}</span>
-                  <span class="unit ng-binding">{{
-                    item.items[0].primary_unit
-                  }}</span>
                   } @else if (item?.avg) {
                   <span class="card-hd-text ng-binding">avg</span>
                   <span class="s24 ng-binding">{{ item?.avg }}</span>
-                  <span class="unit ng-binding">{{
-                    item.items[0].primary_unit
-                  }}</span>
+
                   }
+                  <span class="unit ng-binding">{{
+                    showUnit(item?.sample_type, item.items[0].primary_unit)
+                  }}</span>
                 </span>
               </div>
             </div>

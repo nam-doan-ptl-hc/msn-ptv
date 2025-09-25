@@ -4,26 +4,97 @@
       <img src="/assets/images/logo-patient.svg" />
     </a>
   </div>
-  <div
-    class="item-nav account icon-show"
-    md-labeled-by-tooltip="md-tooltip-31"
-    style="cursor: pointer"
-  >
-    <p class="icon account-name icon-avatar">{{ checkAvatarAccount() }}</p>
-    <span class="text label ng-scope" style="cursor: pointer">ME</span>
-    <div class="wrapper-account">
-      <span class="ar1"></span><span class="ar2"></span>
-      <div class="menu-account">
-        <p class="avatar-user">{{ checkAvatarAccount() }}</p>
-        <div class="d-flex justify-content-center align-items-center">
-          <div class="info-user">
-            <p class="name-user">{{ getNameAccount() }}</p>
-            <p class="email-user">{{ user.email }}</p>
+  <div class="d-flex">
+    <div class="div-setting" (click)="onPopupSetting()">
+      <p class="p-icon"><img src="/assets/images/ic_more_settings_03.svg" /></p>
+      <p class="p-text">My settings</p>
+    </div>
+    <div
+      class="item-nav account icon-show"
+      md-labeled-by-tooltip="md-tooltip-31"
+      style="cursor: pointer"
+    >
+      <p class="icon account-name icon-avatar">{{ checkAvatarAccount() }}</p>
+      <span class="text label ng-scope" style="cursor: pointer">ME</span>
+      <div class="wrapper-account">
+        <span class="ar1"></span><span class="ar2"></span>
+        <div class="menu-account">
+          <p class="avatar-user">{{ checkAvatarAccount() }}</p>
+          <div class="d-flex justify-content-center align-items-center">
+            <div class="info-user">
+              <p class="name-user">{{ getNameAccount() }}</p>
+              <p class="email-user">{{ user.email }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="actions-box">
+          <button class="btn-logout" (click)="logOut()">Log Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="modalSeting" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 650px">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSetingLabel">My Settings</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div class="row row-item">
+          <div class="col-sm-4">Temperature</div>
+          <div class="col-sm-8">
+            <select class="form-control" [(ngModel)]="temperature_unit">
+              <option value="degC">Celsius</option>
+              <option value="degF">Fahrenheit</option>
+            </select>
+          </div>
+        </div>
+        <div class="row row-item">
+          <div class="col-sm-4">Height</div>
+          <div class="col-sm-8">
+            <select class="form-control" [(ngModel)]="height_unit">
+              <option value="cm">Centimeter</option>
+              <option value="ft">Feet</option>
+            </select>
+          </div>
+        </div>
+        <div class="row row-item">
+          <div class="col-sm-4">Weight</div>
+          <div class="col-sm-8">
+            <select class="form-control" [(ngModel)]="weight_unit">
+              <option value="kg">Kilogram</option>
+              <option value="lbs">Pound</option>
+            </select>
+          </div>
+        </div>
+        <div class="row row-item">
+          <div class="col-sm-4">Blood Glucose</div>
+          <div class="col-sm-8">
+            <select class="form-control" [(ngModel)]="blood_glucose_unit">
+              <option value="mg/dL">mg/dL</option>
+              <option value="mmol/L">mmol/L</option>
+            </select>
           </div>
         </div>
       </div>
-      <div class="actions-box">
-        <button class="btn-logout" (click)="logOut()">Log Out</button>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          CANCEL
+        </button>
+        <button
+          type="button"
+          class="btn btn-danger"
+          (click)="onConfirmBulkAction()"
+        >
+          APPLY
+        </button>
       </div>
     </div>
   </div>

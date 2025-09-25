@@ -753,4 +753,96 @@ export class Utils {
       }
     }
   }
+  static getUserUnits() {
+    const userInfo = localStorage.getItem('user_info');
+    if (!userInfo) return null;
+
+    try {
+      const user = JSON.parse(userInfo);
+      return {
+        temperature: user.extended_attributes?.temperature_unit ?? 'degF',
+        height: user.extended_attributes?.height_unit ?? 'ft',
+        weight: user.extended_attributes?.weight_unit ?? 'lbs',
+        glucose: user.extended_attributes?.blood_glucose_unit ?? 'mg/dL',
+      };
+    } catch {
+      return {
+        temperature: 'degC',
+        height: 'cm',
+        weight: 'kg',
+        glucose: 'mg/dL',
+      };
+    }
+  }
+  static formatValueByUnit(sampleType: string, value: number): string | number {
+    const units = this.getUserUnits();
+
+    switch (sampleType) {
+      case 'WEIGHT': {
+        if (units && units.weight === 'kg') {
+          const converted = Utils.convertUnit.massWeight(value, 'lbs', 'kg', {
+            decimals: 1,
+          });
+          return converted ? converted : '';
+        }
+        return this.roundDecimals(value, 1);
+      }
+
+      case 'HEIGHT': {
+        if (units && units.height === 'cm') {
+          const converted = Utils.convertUnit.distanceLength(
+            value,
+            'ft',
+            'cm',
+            {
+              decimals: 1,
+            }
+          );
+          return converted ? converted : '';
+        }
+        return this.roundDecimals(value, 1);
+      }
+
+      case 'BODY_TEMPER': {
+        if (units && units.temperature === 'degC') {
+          const converted = Utils.convertUnit.temperature(value, 'F', 'C', {
+            decimals: 1,
+          });
+          return converted ? converted : '';
+        }
+        return this.roundDecimals(value, 1);
+      }
+
+      case 'BLOOD_GLUCOSE': {
+        if (units && units.glucose === 'mmol/L') {
+          const converted = Utils.convertUnit.glucose(
+            value,
+            'mg/dL',
+            'mmol/L',
+            {
+              decimals: 2,
+            }
+          );
+          return converted ? converted : '';
+        }
+        return this.roundDecimals(value, 0);
+      }
+
+      default:
+        return value != null ? value.toString() : '';
+    }
+  }
+  static showUnit(sample_type: string, unit: string) {
+    const units = this.getUserUnits();
+    if (sample_type === 'HEIGHT') {
+      return (units?.height === 'cm' ? units?.height : '') ?? '';
+    } else if (sample_type === 'WEIGHT') {
+      return units?.weight ?? 'lbs';
+    } else if (sample_type === 'BODY_TEMPER') {
+      return units?.temperature ?? 'degF';
+    } else if (sample_type === 'BLOOD_GLUCOSE') {
+      return units?.glucose ?? 'mg/dL';
+    }
+    return unit;
+  }
 }

@@ -136,3 +136,40 @@
   height: 0;
   width: 0;
 }
+.div-setting :hover {
+  cursor: pointer;
+}
+
+.div-setting:hover .p-text {
+  color: #fff !important;
+}
+
+.div-setting:hover .p-icon {
+  opacity: 1 !important;
+}
+.div-setting {
+  margin-right: 30px;
+  margin-top: 6px;
+}
+.div-setting p {
+  margin-bottom: 0px;
+  text-align: center;
+}
+
+.div-setting .p-icon {
+  opacity: 0.87;
+}
+.div-setting .p-text {
+  margin-top: 0px;
+  color: #d5d5d5;
+}
+#modalSeting .modal-dialog {
+  max-width: 650px;
+  margin: auto;
+}
+#modalSeting {
+  .row-item {
+    margin-top: 20px;
+    margin-bottom: 10px;
+  }
+}

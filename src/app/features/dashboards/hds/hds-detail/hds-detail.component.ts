@@ -86,9 +86,11 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
 
     const sum = valid.reduce((acc, d) => acc + (d.y as number), 0);
     const valueAvg = sum / valid.length;
-    return this.chartDetail.sample_type === 'HEIGHT'
-      ? Utils.convertUnit.showHeightInch(valueAvg)
-      : Utils.roundDecimals(valueAvg, 1);
+    const units = Utils.getUserUnits();
+    if (this.chartDetail.sample_type === 'HEIGHT' && units?.height === 'ft') {
+      return Utils.convertUnit.showHeightInch(valueAvg);
+    }
+    return Utils.formatValueByUnit(this.chartDetail.sample_type, valueAvg);
   }
   public isShowForMinute(): boolean {
     return Utils.inArray(
@@ -171,7 +173,10 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       ' ' +
       this.chartDetail.items[0].snapshot_value_type +
       ' ' +
-      this.chartDetail.items[0].primary_unit;
+      Utils.showUnit(
+        this.chartDetail.sample_type,
+        this.chartDetail.items[0].primary_unit
+      );
     this.columnNames[2] = nameColum3;
     return result;
   }
@@ -190,7 +195,10 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       }
 
       return {
-        value: `${min}-${max}`,
+        value: `${Utils.formatValueByUnit(
+          this.chartDetail.sample_type,
+          min
+        )} - ${Utils.formatValueByUnit(this.chartDetail.sample_type, max)}`,
         date: d.date,
       };
     });
@@ -199,7 +207,7 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     if (!datas?.length) return [];
     return datas.map((d: any) => {
       return {
-        value: d.y,
+        value: Utils.formatValueByUnit(this.chartDetail.sample_type, d.y),
         date: d.date,
       };
     });
@@ -227,6 +235,9 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
     }
     this.updateTableData();
   }
+  showUnit(sample_type: string, unit: string) {
+    return Utils.showUnit(sample_type, unit);
+  }
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['chartDetail'] && !changes['chartDetail'].firstChange) {
       this.updateTableData();
@@ -238,39 +249,41 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       ) => {
         return '';
       };
-      if (sampleType === 'HEIGHT') {
-        this.chartDetail.chartOptions.scales.y.ticks.callback = (
-          value: any
-        ) => {
-          return `${Math.floor(Number(value))}'`; // hiển thị 3', 4', 5'
-        };
-        this.chartDetail.chartOptions.plugins.tooltip.callbacks.label = (
-          context: any
-        ) => {
-          const val = context.raw?.y ?? context.parsed?.y;
-          return Utils.convertUnit.showHeightInch(val); // chuyển 3.94 -> 3' 11"
-        };
-      } else if (sampleType === 'STEP') {
+      if (sampleType === 'STEP') {
         this.chartDetail.chartOptions.plugins.tooltip.callbacks.label = (
           context: any
         ) => {
           const val = context.raw?.y ?? context.parsed?.y;
           return Utils.formatNumber(val);
         };
+      } else {
+        const sampleType = this.chartDetail?.sample_type;
+
+        this.chartDetail.chartOptions.plugins.tooltip.callbacks.title = () =>
+          '';
+        this.chartDetail.chartOptions.plugins.tooltip.callbacks.label = (
+          context: any
+        ) => {
+          const val = context.raw?.y ?? context.parsed?.y;
+          return Utils.formatValueByUnit(sampleType, val);
+        };
+        if (
+          sampleType === 'HEIGHT' ||
+          sampleType === 'WEIGHT' ||
+          sampleType === 'BODY_TEMPER' ||
+          sampleType === 'BLOOD_GLUCOSE'
+        ) {
+          this.chartDetail.chartOptions.scales.y.ticks.callback = (
+            value: any
+          ) => {
+            return Utils.formatValueByUnit(sampleType, value);
+          };
+        }
       }
     }
   }
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
-  }
-  formatValueChart(value: any): number | any {
-    if (this.chartDetail.sample_type === 'HEIGHT') {
-      return Utils.convertUnit.showHeightInch(value);
-    }
-    if (typeof value === 'number' && !isNaN(value)) {
-      return Utils.roundDecimals(value, 1);
-    }
-    return value;
   }
   getMonthRangeLocal(dateStr: string): { start: string; end: string } {
     const m = /^(\d{4})-(\d{1,2})/.exec(dateStr);

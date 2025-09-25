@@ -19,13 +19,23 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  firstValueFrom,
+  forkJoin,
+  map,
+  Observable,
+  of,
+  tap,
+} from 'rxjs';
 import {
   minMaxLabelPlugin,
   crosshairLine,
 } from '../../../../plugins/chart-plugins';
 import { HdsDetailComponent } from './hds-detail/hds-detail.component';
 import { HdsDataViewComponent } from './hds-data-view/hds-data-view.component';
+import { UserService } from '../../../../services/user.service';
 
 Chart.register(...registerables, minMaxLabelPlugin, crosshairLine);
 type DataPoint = {
@@ -58,23 +68,18 @@ type NormalizedPoint = {
   styleUrls: ['./hds.component.scss'],
 })
 export class HdsComponent implements OnInit {
-  user: any = {};
+  private userService = inject(UserService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private dashboardService = inject(DashboardService);
   private snackBar = inject(MatSnackBar);
-  constructor(private datePipe: DatePipe, private cdr: ChangeDetectorRef) {
-    if (isPlatformBrowser(this.platformId)) {
-      const userInfoStr = localStorage.getItem('user_info');
-      this.user = JSON.parse(userInfoStr || '{}');
-    }
-  }
+  constructor(private datePipe: DatePipe, private cdr: ChangeDetectorRef) {}
   id1!: string;
   id2!: string;
   id3!: string;
-
+  user: any = {};
   isBrowser = false;
   isChangeViewDetail = false;
   isViewChart = true;
@@ -107,23 +112,48 @@ export class HdsComponent implements OnInit {
   formatDate(date: Date): string {
     return this.datePipe.transform(date, 'MM/dd/yyyy') || '';
   }
+  refresh(): void {
+    if (this.params.dateFrom && this.params.dateTo) {
+      const textPickDate = this.textPickDate;
+      if (textPickDate === 'customDate') {
+        this.loadData(6, {
+          dateFrom: this.params.dateFrom,
+          dateTo: this.params.dateTo,
+        });
+      } else if (textPickDate === 'today') this.pickDate(1);
+      else if (textPickDate === 'thisWeek') this.pickDate(2);
+      else if (textPickDate === 'thisMonth') this.pickDate(3);
+      else if (textPickDate === 'last30days') this.pickDate(4);
+      else if (textPickDate === 'thisYear') this.pickDate(5);
+    } else {
+      this.loadData();
+    }
+  }
   ngOnInit(): void {
     if (this.isBrowser && !this.auth.isLoggedIn()) {
       this.router.navigate(['/']);
+      return;
     }
 
-    this.route.paramMap.subscribe((params) => {
-      this.id1 = params.get('id1') || '';
-      this.id2 = params.get('id2') || '';
-      this.id3 = params.get('id3') || '';
-      console.log({ id1: this.id1, id2: this.id2, id3: this.id3 });
-    });
-    this.loadData();
+    combineLatest([this.userService.userInfo$, this.route.paramMap]).subscribe(
+      ([user, params]) => {
+        this.user = user || {};
+        this.id1 = params.get('id1') || '';
+        this.id2 = params.get('id2') || '';
+        this.id3 = params.get('id3') || '';
+        console.log({ id1: this.id1, id2: this.id2, id3: this.id3 });
+        this.refresh();
+      }
+    );
+    // Khởi tạo dữ liệu mặc định (chỉ chạy khi browser)
     if (this.isBrowser) {
-      this.params.dateFrom = this.formatDate(new Date()) + ' 00:00:00';
-      this.params.dateTo = this.formatDate(new Date()) + ' 23:59:59';
-      this.textBtn = Utils.getDateString(new Date(), 'M d, yyyy');
+      const today = new Date();
+      this.params.dateFrom = this.formatDate(today) + ' 00:00:00';
+      this.params.dateTo = this.formatDate(today) + ' 23:59:59';
+      this.textBtn = Utils.getDateString(today, 'M d, yyyy');
     }
+
+    // Lắng nghe thay đổi range date
     this.range.valueChanges.subscribe((value) => {
       if (value.start && value.end) {
         this.params.dateFrom = this.formatDate(value.start) + ' 00:00:00';
@@ -138,7 +168,6 @@ export class HdsComponent implements OnInit {
       }
     });
   }
-
   public closeDetail(): void {
     this.chartDetail = null;
     const textPickDate = this.breadcrumbs[0].textPickDate;
@@ -148,29 +177,44 @@ export class HdsComponent implements OnInit {
         dateFrom: this.params.dateFrom,
         dateTo: this.params.dateTo,
       });
-    } else {
-      if (textPickDate === 'today') this.pickDate(1);
-      else if (textPickDate === 'thisWeek') this.pickDate(2);
-      else if (textPickDate === 'thisMonth') this.pickDate(3);
-      else if (textPickDate === 'last30days') this.pickDate(4);
-      else if (textPickDate === 'thisYear') this.pickDate(5);
-    }
+    } else if (textPickDate === 'today') this.pickDate(1);
+    else if (textPickDate === 'thisWeek') this.pickDate(2);
+    else if (textPickDate === 'thisMonth') this.pickDate(3);
+    else if (textPickDate === 'last30days') this.pickDate(4);
+    else if (textPickDate === 'thisYear') this.pickDate(5);
   }
 
   public changeView = (): void => {
-    if (this.isViewChart) this.closeDetail();
+    if (this.isViewChart && !Utils.isEmpty(this.chartDetail)) {
+      this.closeDetail();
+    }
     this.isViewChart = !this.isViewChart;
   };
 
-  public fncDetailChart = (item: any, isSnapShot: boolean = false): void => {
+  public fncDetailChart = async (
+    item: any,
+    isSnapShot: boolean = false
+  ): Promise<void> => {
     let clonedItem = JSON.parse(JSON.stringify(item));
     if (isSnapShot) {
       this.breadcrumbs = [];
-      const found = this.charts.find((c) => c.sample_type === item);
-      clonedItem = JSON.parse(JSON.stringify(found));
+      if (!Utils.isEmpty(this.chartDetail)) {
+        this.chartDetail.params.group_type = this.params.group_type;
+        this.isChangeViewDetail = false;
+        this.isViewChart = true;
+        this.chartDetail.sample_type = item;
+        this.chartDetail.params.sample_type_id = item;
+        const dataTypes = Utils.getBodyTypeTopType(item);
+        this.chartDetail.params.body_type = dataTypes.body_type;
+        this.chartDetail.params.top_type = dataTypes.top_type;
+        await this.loadChartDetail().toPromise();
+        return;
+      } else {
+        const found = this.charts.find((c) => c.sample_type === item);
+        clonedItem = JSON.parse(JSON.stringify(found));
+      }
     }
     this.chartDetail = clonedItem;
-
     this.breadcrumbs.push(JSON.parse(JSON.stringify(clonedItem)));
     this.isViewChart = true;
   };
@@ -329,6 +373,7 @@ export class HdsComponent implements OnInit {
 
     this.labels = this.generateXAxisLabels();
     this.updateXScaleFromParams();
+    this.loadData4SnapshotCard(this.dataSnapshots);
     if (!Utils.isEmpty(this.chartDetail)) {
       this.breadcrumbs = [];
       this.chartDetail.params.group_type = this.params.group_type;
@@ -368,10 +413,10 @@ export class HdsComponent implements OnInit {
         this.dataSnapshots.forEach((item: any) => {
           const itemData = Utils.findObject(res.data, '_id', item.id);
           if (itemData.pos > -1) {
-            item.value =
-              item.id == 'HEIGHT'
-                ? Utils.convertUnit.showHeightInch(itemData.obj.item.value)
-                : itemData.obj.item.value || '';
+            item.value = Utils.formatValueByUnit(
+              item.id,
+              itemData.obj.item.value
+            );
             item.unit = itemData.obj.item.unit || '';
             item.sync_date_utc = itemData.obj.item.sync_date_utc || '';
           }
@@ -389,6 +434,11 @@ export class HdsComponent implements OnInit {
                 }
               );
             }
+          } else if (
+            item.id === 'HEIGHT' &&
+            this.user.extended_attributes.height_unit === 'ft'
+          ) {
+            item.value = Utils.convertUnit.showHeightInch(item.value);
           }
           item.src =
             '/assets/images/icon-sample-type/ic-' +
@@ -438,13 +488,15 @@ export class HdsComponent implements OnInit {
           return '';
         },
         label: (context: any) => {
-          if (sample_type === 'HEIGHT') {
-            return Utils.convertUnit.showHeightInch(context.raw.y);
-          }
+          const yVal = context.raw.y;
+
           if (sample_type === 'STEP') {
-            return Utils.formatNumber(context.raw.y);
+            // STEP thì vẫn format số nguyên
+            return Utils.formatNumber(yVal);
           }
-          return Utils.roundDecimals(context.raw.y, 1);
+
+          // Các loại khác (HEIGHT, WEIGHT, BODY_TEMPER, BLOOD_GLUCOSE…)
+          return Utils.formatValueByUnit(sample_type, yVal);
         },
       },
     };
@@ -488,6 +540,9 @@ export class HdsComponent implements OnInit {
 
     return labels;
   }
+  showUnit(sample_type: string, unit: string) {
+    return Utils.showUnit(sample_type, unit);
+  }
   checkHasItemInChart(data: any[]) {
     return data.some((item) => item.y !== null && item.y !== undefined);
   }
@@ -496,23 +551,19 @@ export class HdsComponent implements OnInit {
     day_of_month: number;
     month: number;
     year: number;
-    date: Date; // thêm field này
-    dateString: string; // thêm field này
+    date: Date;
+    dateString: string;
   } {
-    // 1. Lấy ngày gốc từ server (theo day_of_year)
     const utcDate = new Date(Date.UTC(e.year, 0, 1));
     utcDate.setUTCDate(utcDate.getUTCDate() + e.day - 1);
-
-    // 2. Convert sang giờ local client
     const localDate = new Date(utcDate);
-
     return {
       day_of_week: localDate.getDay(),
       day_of_month: localDate.getDate(),
       month: localDate.getMonth() + 1,
       year: localDate.getFullYear(),
-      date: localDate, // vẫn giữ nếu muốn
-      dateString: localDate.toISOString(), // thêm field string
+      date: localDate,
+      dateString: localDate.toISOString(),
     };
   }
   mapDataToXY(
@@ -808,11 +859,17 @@ export class HdsComponent implements OnInit {
       item.min_max =
         res.data[0]?.items.length === 1
           ? res.data[0].min
-          : res.data[0].min + ' - ' + res.data[0].max;
+          : Utils.formatValueByUnit(sample_type, Number(res.data[0].min)) +
+            ' - ' +
+            Utils.formatValueByUnit(sample_type, Number(res.data[0].max));
     } else {
       item.avg = res.data[0]?.total
         ? Utils.formatNumber(res.data[0]?.total)
         : Utils.roundDecimals(res.data[0]?.avg || 0, 1);
+      item.avg =
+        res.data[0]?.avg > 0
+          ? Utils.formatValueByUnit(sample_type, Number(item.avg))
+          : 0;
     }
     item.iconChart =
       'ic-' + sample_type.toLowerCase().replace(/_/g, '-') + '-st.svg';
@@ -865,10 +922,7 @@ export class HdsComponent implements OnInit {
               ticks: {
                 stepSize: sample_type === 'HEIGHT' ? 1 : 5,
                 callback: (value: any) => {
-                  if (sample_type === 'HEIGHT') {
-                    return `${Math.floor(Number(value))}'`;
-                  }
-                  return value;
+                  return Utils.formatValueByUnit(sample_type, Number(value));
                 },
               },
             },
@@ -1090,13 +1144,19 @@ export class HdsComponent implements OnInit {
           maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
-            tooltip: this.tooltipOpts(),
+            tooltip: this.tooltipOpts(sample_type),
           },
           scales: {
             x: scatterDataIndex.xScale,
             y: {
               min: cstMin < 0 ? 0 : cstMin,
               max: cstMax,
+              ticks: {
+                stepSize: 5,
+                callback: (value: any) => {
+                  return Utils.formatValueByUnit(sample_type, Number(value));
+                },
+              },
             },
           },
         };
@@ -1304,8 +1364,6 @@ export class HdsComponent implements OnInit {
   loadData(datePicker: number = 1, options: any = {}) {
     if (!isPlatformBrowser(this.platformId)) return;
     this.isBrowser = isPlatformBrowser(this.platformId);
-    const userInfoStr = localStorage.getItem('user_info');
-    this.user = JSON.parse(userInfoStr || '{}');
     const body = {
       token: this.user.token || '',
       req_time: new Date().setHours(0, 0, 0, 0),
@@ -1331,7 +1389,6 @@ export class HdsComponent implements OnInit {
             last: e._id.sample_type_group_id === 'HEIGHT',
           }));
         this.dataSnapshots = sample_type;
-        this.loadData4SnapshotCard(sample_type);
         this.pickDate(datePicker, options);
       },
       error: (err) => {
