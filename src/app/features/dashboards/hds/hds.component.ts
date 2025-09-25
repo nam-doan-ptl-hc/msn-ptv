@@ -871,10 +871,9 @@ export class HdsComponent implements OnInit {
       item.avg = res.data[0]?.total
         ? Utils.formatNumber(res.data[0]?.total)
         : Utils.roundDecimals(res.data[0]?.avg || 0, 1);
-      item.avg =
-        res.data[0]?.avg > 0
-          ? Utils.formatValueByUnit(sample_type, Number(item.avg))
-          : 0;
+      if (res.data[0]?.avg > 0) {
+        item.avg = Utils.formatValueByUnit(sample_type, Number(item.avg));
+      }
     }
     item.iconChart =
       'ic-' + sample_type.toLowerCase().replace(/_/g, '-') + '-st.svg';
