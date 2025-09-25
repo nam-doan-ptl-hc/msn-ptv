@@ -227,7 +227,7 @@
               }
             </div>
             <div class="d-bottom-chart">
-              @if (item.dataCharts[0]?.data?.length > 0) {
+              @if (checkHasItemInChart(item.dataCharts[0]?.data)) {
               <div class="d-flex view">
                 <div class="time-snap">
                   <i class="material-icons">sync</i>

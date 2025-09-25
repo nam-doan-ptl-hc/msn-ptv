@@ -122,8 +122,12 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
           return []; // fallback nếu null/undefined
         }
       );
-      const minY = Math.min(...validData.map((d: any) => d.y));
-      const maxY = Math.max(...validData.map((d: any) => d.y));
+      const minY = !Utils.isEmpty(validData)
+        ? Math.min(...validData.map((d: any) => d.y))
+        : 0;
+      const maxY = !Utils.isEmpty(validData)
+        ? Math.max(...validData.map((d: any) => d.y))
+        : 0;
       if (minY === maxY) return minY.toString();
       return `${minY}-${maxY}`;
     } else {
