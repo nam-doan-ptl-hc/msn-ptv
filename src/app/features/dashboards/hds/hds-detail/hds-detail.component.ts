@@ -265,8 +265,9 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
           context: any
         ) => {
           const val = context.raw?.y ?? context.parsed?.y;
-          return Utils.formatValueByUnit(sampleType, val);
+          return Utils.formatValueByUnit(sampleType, val, true);
         };
+
         if (
           sampleType === 'HEIGHT' ||
           sampleType === 'WEIGHT' ||

@@ -204,6 +204,12 @@ export class HdsComponent implements OnInit {
         this.isViewChart = true;
         this.chartDetail.sample_type = item;
         this.chartDetail.params.sample_type_id = item;
+        const found = this.sampleTypes.find(
+          (c) => c._id.sample_type_group_id === item
+        );
+        if (found) {
+          this.chartDetail.items = found.items;
+        }
         const dataTypes = Utils.getBodyTypeTopType(item);
         this.chartDetail.params.body_type = dataTypes.body_type;
         this.chartDetail.params.top_type = dataTypes.top_type;
@@ -390,13 +396,17 @@ export class HdsComponent implements OnInit {
   }
 
   private loadData4SnapshotCard(sample_type: any[] = []) {
+    const sampleType = sample_type.map((e: any) => ({
+      id: e?.id,
+      last: e?.last,
+    }));
     const body = {
       token: this.user.token || '',
       req_time: new Date().setHours(0, 0, 0, 0),
       from: this.params.dateFrom,
       to: this.params.dateTo,
       patient_ref: this.id2,
-      sample_type: sample_type,
+      sample_type: sampleType,
     };
 
     this.dashboardService.loadData4SnapshotCard(body).subscribe({
@@ -434,11 +444,6 @@ export class HdsComponent implements OnInit {
                 }
               );
             }
-          } else if (
-            item.id === 'HEIGHT' &&
-            this.user.extended_attributes.height_unit === 'ft'
-          ) {
-            item.value = Utils.convertUnit.showHeightInch(item.value);
           }
           item.src =
             '/assets/images/icon-sample-type/ic-' +

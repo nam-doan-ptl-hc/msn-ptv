@@ -774,7 +774,11 @@ export class Utils {
       };
     }
   }
-  static formatValueByUnit(sampleType: string, value: number): string | number {
+  static formatValueByUnit(
+    sampleType: string,
+    value: number,
+    isShowUnit: boolean = false
+  ): string | number {
     const units = this.getUserUnits();
 
     switch (sampleType) {
@@ -800,7 +804,9 @@ export class Utils {
           );
           return converted ? converted : '';
         }
-        return this.roundDecimals(value, 1);
+        return (
+          Utils.convertUnit.showHeightInch(value) + (isShowUnit ? "'" : '')
+        );
       }
 
       case 'BODY_TEMPER': {
