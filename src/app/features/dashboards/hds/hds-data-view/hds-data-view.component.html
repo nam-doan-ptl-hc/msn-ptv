@@ -10,7 +10,13 @@
       </div>
       <div id="div-menu">
         <ul>
-          <li>All</li>
+          <li>
+            <img
+              src="/assets/images/icon-sample-type-category/ic_results.svg"
+              class="img-icon-menu"
+            />
+            <span class="text-menu">All</span>
+          </li>
           @for(item of menuLeft; track item.value) {
           <li (click)="filterByCategory(item.value)">
             <img [src]="item.icon" class="img-icon-menu" />
