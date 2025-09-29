@@ -835,7 +835,7 @@ export class Utils {
       }
 
       default:
-        return value != null ? value.toString() : '';
+        return value != null ? this.roundDecimals(value, 1) : '';
     }
   }
   static showUnit(sample_type: string, unit: string) {

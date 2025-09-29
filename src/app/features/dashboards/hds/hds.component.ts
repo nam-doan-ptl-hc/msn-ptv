@@ -268,17 +268,12 @@ export class HdsComponent implements OnInit {
         this.xScale.max = 6;
       } else {
         // Tháng hoặc 30 ngày
-        if (this.textPickDate === 'thisMonth') {
-          this.xScale.min = 1;
-          this.xScale.max = 31;
-        } else {
-          const startDate = new Date(this.params.dateFrom);
-          const endDate = new Date(this.params.dateTo);
-          const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          this.xScale.min = 1;
-          this.xScale.max = diffDays;
-        }
+        const startDate = new Date(this.params.dateFrom);
+        const endDate = new Date(this.params.dateTo);
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        this.xScale.min = 1;
+        this.xScale.max = diffDays;
       }
     } else if (gt === 'months') {
       this.xScale.min = 1;
@@ -460,18 +455,25 @@ export class HdsComponent implements OnInit {
   xScale: any = {
     type: 'category',
     offset: false,
+    labels: this.labels,
     bounds: 'ticks',
     ticks: {
       stepSize: 1,
-      callback: (value: any, index: number) => {
+      autoSkip: true,
+      callback: (value: any, index: number, ticks: any) => {
+        // ép hiển thị tick đầu và tick cuối
+        if (index === 0 || index === this.labels.length - 1) {
+          return this.labels[index];
+        }
+        // các trường hợp khác giữ logic cũ
         if (this.textPickDate === 'last30days') {
           return this.labels[index];
         }
         if (this.textPickDate === 'thisYear') {
-          return initCharts.monthNames[index]; // J, F, M...
+          return initCharts.monthNames[index];
         }
         if (this.textPickDate === 'thisWeek') {
-          return this.labels[index]; // SUN, MON, ...
+          return this.labels[index];
         }
         if (this.params.group_type === 'hour') {
           return value;
@@ -828,6 +830,7 @@ export class HdsComponent implements OnInit {
       xScale: this.xScale,
     };
   }
+
   private processForChart(
     res: any,
     item: any,
@@ -890,7 +893,6 @@ export class HdsComponent implements OnInit {
         // 1.1=== line chart ===
 
         const scatterDataIndex = this.buildChartData(datas, group_type, labels);
-
         item.dataCharts = [
           {
             type: 'line',
@@ -1007,17 +1009,9 @@ export class HdsComponent implements OnInit {
           y: number | null;
           date?: any;
         }[];
-        let xScale: any;
 
         // x = chính là label string (ví dụ: '31','1','2',...)
         scatterDataIndex = this.normalizeDatas(datas, this.labels);
-
-        xScale = {
-          type: 'category',
-          labels: this.labels,
-          offset: false,
-          ticks: { stepSize: 1 },
-        };
 
         // Trải phẳng nhưng giữ index
         const validData = scatterDataIndex.flatMap((d, idx) => {
@@ -1052,6 +1046,7 @@ export class HdsComponent implements OnInit {
 
         const cstMin = Utils.roundDecimals(minY - 20, 0);
         const cstMax = Utils.roundDecimals(maxY + 20, 0);
+
         item.dataCharts = [
           {
             label: sample_type,
@@ -1082,13 +1077,46 @@ export class HdsComponent implements OnInit {
             tooltip: this.tooltipOpts(),
           },
           scales: {
-            x: xScale,
+            x: {
+              type: 'category',
+              offset: false,
+              labels: this.labels,
+              ticks: {
+                stepSize: 1,
+                autoSkip: true,
+                callback: (value: any, index: number, ticks: any) => {
+                  // Luôn show tick đầu và tick cuối
+                  if (index === 0 || index === ticks.length - 1) {
+                    return this.labels[index] ?? '';
+                  }
+                  if (this.textPickDate === 'last30days') {
+                    return this.labels[index];
+                  }
+                  if (this.textPickDate === 'thisYear') {
+                    return initCharts.monthNames[index]; // J, F, M...
+                  }
+                  if (this.textPickDate === 'thisWeek') {
+                    return this.labels[index]; // SUN, MON, ...
+                  }
+                  if (this.params.group_type === 'hour') {
+                    return value;
+                  }
+                  if (this.params.group_type === 'days') {
+                    return this.labels[index];
+                  }
+                  return value;
+                },
+              },
+            },
             y: {
               min: cstMin < 0 ? 0 : cstMin,
               max: cstMax,
             },
           },
         };
+
+        // ⚡️ labels phải ở data, không được để ở scales.x
+        item.chartLabels = this.labels;
       } else if (Utils.inArray(sample_type, initCharts.barCharts)) {
         // === 3. bar chart ===
         const scatterDataIndex = this.buildChartData(datas);
