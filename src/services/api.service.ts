@@ -8,7 +8,6 @@ import * as moment from 'moment-timezone';
   providedIn: 'root',
 })
 export class ApiService {
-  private baseUrl = 'https://app.doctellaqa.com/api';
   private defaultHeaders = new HttpHeaders({
     accept: 'application/json, text/javascript, */*; q=0.01',
     'accept-language': 'en',
@@ -21,7 +20,7 @@ export class ApiService {
   constructor(private http: HttpClient) {}
 
   get(path: string, params?: any): Observable<any> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${environment.domain_api}${path}`;
     return this.http.get(url, {
       headers: this.defaultHeaders,
       params,
@@ -29,14 +28,14 @@ export class ApiService {
   }
 
   post(path: string, body: any): Observable<any> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${environment.domain_api}${path}`;
     return this.http.post(url, body, {
       headers: this.defaultHeaders,
     });
   }
 
   postFormEncoded(path: string, body: Record<string, any>): Observable<any> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${environment.domain_api}${path}`;
 
     let params = new HttpParams();
     for (const key in body) {

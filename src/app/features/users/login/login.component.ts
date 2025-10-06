@@ -17,6 +17,7 @@ import { ApiService } from '../../../../services/api.service';
 import { Utils } from '../../../utils/utils';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'login',
@@ -84,7 +85,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         browser_version: '134.0.0.0',
       },
       keep_logged_in: false,
-      domain_name: 'www.doctellaqa.com',
+      domain_name: environment.domain,
     };
 
     this.api.postFormEncoded('/signin', body).subscribe({

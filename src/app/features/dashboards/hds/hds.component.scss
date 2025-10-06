@@ -246,3 +246,20 @@
   right: -10px;
   width: 24px;
 }
+.btn-next-prev {
+  padding-top: 5px;
+}
+.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.visually-hidden {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.mat-calendar-body-disabled {
+  opacity: 0.5 !important;
+}

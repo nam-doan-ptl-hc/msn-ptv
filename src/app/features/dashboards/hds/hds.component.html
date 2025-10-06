@@ -11,31 +11,57 @@
       <button (click)="refresh()">Refresh</button>
     </div>
 
-    <div class="toolbar-right">
-      <button class="date-btn">{{ textBtn }}</button>
-      <!-- dropdown menu -->
-      <div class="dropdown">
-        <ul>
-          <li (click)="pickDate(1)">TODAY</li>
-          <li (click)="pickDate(2)">THIS WEEK</li>
-          <li (click)="pickDate(3)">THIS MONTH</li>
-          <li (click)="pickDate(4)">LAST 30 DAYS</li>
-          <li (click)="pickDate(5)">THIS YEAR</li>
-          <li (click)="picker.open()">CUSTOM RANGE</li>
-        </ul>
+    <div>
+      <div class="d-flex">
+        <span
+          class="material-symbols-outlined hover-cusror btn-next-prev"
+          (click)="pickDate(8)"
+        >
+          chevron_left
+        </span>
+        <div class="toolbar-right">
+          <button class="date-btn">{{ textBtnPickDate }}</button>
+          <!-- dropdown menu -->
+          <div class="dropdown">
+            <ul>
+              <li (click)="pickDate(1)">TODAY</li>
+              <li (click)="pickDate(2)">THIS WEEK</li>
+              <li (click)="pickDate(3)">THIS MONTH</li>
+              <li (click)="pickDate(4)">LAST 30 DAYS</li>
+              <li (click)="pickDate(5)">THIS YEAR</li>
+              <li (click)="picker.open()">CUSTOM RANGE</li>
+            </ul>
+          </div>
+        </div>
+        @if(isDisableBtnNext){
+        <span class="material-symbols-outlined btn-next-prev disabled">
+          chevron_right
+        </span>
+        } @else {
+        <span
+          class="material-symbols-outlined hover-cusror btn-next-prev"
+          (click)="pickDate(7)"
+        >
+          chevron_right
+        </span>
+        }
       </div>
     </div>
   </div>
   <!-- Date range picker -->
-  <mat-date-range-input [rangePicker]="picker" [formGroup]="range">
+  <mat-date-range-input
+    [rangePicker]="picker"
+    [formGroup]="range"
+    [dateFilter]="disableFutureDates"
+  >
     <input
-      type="hidden"
+      class="visually-hidden"
       matStartDate
       formControlName="start"
       placeholder="From date"
     />
     <input
-      type="hidden"
+      class="visually-hidden"
       matEndDate
       formControlName="end"
       placeholder="To date"
@@ -123,6 +149,7 @@
                 </div>
               </div>
               <div
+                *ngIf="item.sync_date_utc"
                 class="bottom-card layout-align-space-between-center layout-row"
                 layout="row"
                 layout-align="space-between center"

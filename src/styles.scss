@@ -46,3 +46,18 @@ li {
 .hover-cusror:hover {
   cursor: pointer;
 }
+.mat-calendar-body-disabled :hover {
+  cursor: not-allowed !important;
+}
+.mat-calendar-body-disabled {
+  opacity: 0.5 !important;
+}
+.mat-calendar-body-range-start .mat-calendar-body-cell-content,
+.mat-calendar-body-range-end .mat-calendar-body-cell-content {
+  background-color: #1976d2 !important;
+  color: #fff !important;
+}
+
+.mat-calendar-body-in-range::before {
+  background-color: rgba(25, 118, 210, 0.2) !important;
+}

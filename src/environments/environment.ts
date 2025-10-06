@@ -1,4 +1,6 @@
 export const environment = {
+  domain: 'vnmsn.ptvltd.com',
+  domain_api: 'https://vnmsnapi.ptvltd.com/api',
   production: false,
   X_DOCTELLA_APP_KEY: '26cb713e-a350-4139-962d-b3b75958d0d1',
   X_DOCTELLA_APP_ID: '26c301b1ebe247e6bc5f49b15c159571',

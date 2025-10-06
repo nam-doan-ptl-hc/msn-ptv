@@ -83,6 +83,7 @@ export class HdsComponent implements OnInit {
   isBrowser = false;
   isChangeViewDetail = false;
   isViewChart = true;
+  isDisableBtnNext = true;
   labels: string[] = initCharts.monthNames;
 
   dataSnapshots: any[] = [];
@@ -94,15 +95,21 @@ export class HdsComponent implements OnInit {
     start: new FormControl<Date | null>(null),
     end: new FormControl<Date | null>(null),
   });
-  textBtn: string = '';
   textPickDate = 'today';
   params = {
     dateFrom: '',
     dateTo: '',
     group_type: 'hour',
   };
-
+  textBtnPickDate: string = '';
   showHeightInch = Utils.convertUnit.showHeightInch;
+  disableFutureDates = (d: Date | null): boolean => {
+    if (!d) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
+    return d <= today; // ✅ chỉ cho chọn ngày <= hôm nay
+  };
   getNameAccount() {
     return (
       (!Utils.isEmpty(this.user.first_name) ? this.user.first_name + ' ' : '') +
@@ -150,7 +157,6 @@ export class HdsComponent implements OnInit {
       const today = new Date();
       this.params.dateFrom = this.formatDate(today) + ' 00:00:00';
       this.params.dateTo = this.formatDate(today) + ' 23:59:59';
-      this.textBtn = Utils.getDateString(today, 'M d, yyyy');
     }
 
     // Lắng nghe thay đổi range date
@@ -158,16 +164,39 @@ export class HdsComponent implements OnInit {
       if (value.start && value.end) {
         this.params.dateFrom = this.formatDate(value.start) + ' 00:00:00';
         this.params.dateTo = this.formatDate(value.end) + ' 23:59:59';
-        this.textBtn =
-          Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
-          ' - ' +
-          Utils.getDateString(this.params.dateTo, 'M d, yyyy');
         this.params.group_type = 'days';
         this.textPickDate = 'customDate';
         this.pickDate(0);
       }
     });
+    this.getTextBtnPickDate();
   }
+
+  public getTextBtnPickDate(): void {
+    this.isDisableBtnNext = false;
+    if (!this.params?.dateFrom || !this.params?.dateTo) {
+      this.textBtnPickDate = '';
+      return;
+    }
+
+    const dateTo = new Date(this.params.dateTo);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    // ép dateTo cũng về cuối ngày
+    const dateToEnd = new Date(dateTo);
+    dateToEnd.setHours(23, 59, 59, 999);
+
+    if (dateToEnd.getTime() >= endOfToday.getTime()) {
+      this.params.dateTo = this.formatDate(new Date()) + ' 23:59:59';
+      this.isDisableBtnNext = true;
+    }
+    const from = Utils.getDateString(this.params.dateFrom, 'M d, yyyy');
+    const to = Utils.getDateString(this.params.dateTo, 'M d, yyyy');
+
+    this.textBtnPickDate = from === to ? from : `${from} - ${to}`;
+  }
+
   public closeDetail(): void {
     this.chartDetail = null;
     const textPickDate = this.breadcrumbs[0].textPickDate;
@@ -302,6 +331,7 @@ export class HdsComponent implements OnInit {
   async pickDate(data: number, options: any = {}) {
     const today = new Date();
     this.charts = [];
+    if (data !== 0) this.range.reset(); // Chọn lại date thì reset range
     switch (data) {
       case 1: // TODAY
         this.params.dateFrom = this.formatDate(today) + ' 00:00:00';
@@ -357,22 +387,175 @@ export class HdsComponent implements OnInit {
         this.params.group_type = 'months';
         this.textPickDate = 'thisYear';
         break;
-      case 6:
+      case 6: // Custom Date
         this.params.dateFrom = options.dateFrom;
         this.params.dateTo = options.dateTo;
         this.params.group_type = 'days';
         this.textPickDate = 'customDate';
         break;
+      case 7: // NEXT BUTTON
+        const currentFrom = new Date(this.params.dateFrom);
+        const currentTo = new Date(this.params.dateTo);
+
+        switch (this.textPickDate) {
+          case 'today': {
+            // Ngày hôm sau
+            const nextDayFrom = new Date(currentFrom);
+            const nextDayTo = new Date(currentTo);
+            nextDayFrom.setDate(nextDayFrom.getDate() + 1);
+            nextDayTo.setDate(nextDayTo.getDate() + 1);
+
+            this.params.dateFrom = this.formatDate(nextDayFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextDayTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisWeek': {
+            // Tuần kế tiếp
+            const nextWeekFrom = new Date(currentFrom);
+            const nextWeekTo = new Date(currentTo);
+            nextWeekFrom.setDate(nextWeekFrom.getDate() + 7);
+            nextWeekTo.setDate(nextWeekTo.getDate() + 7);
+
+            this.params.dateFrom = this.formatDate(nextWeekFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextWeekTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisMonth': {
+            // Tháng kế tiếp
+            const nextMonthFrom = new Date(currentFrom);
+            const nextMonthTo = new Date(currentTo);
+            nextMonthFrom.setMonth(nextMonthFrom.getMonth() + 1);
+            nextMonthTo.setMonth(nextMonthTo.getMonth() + 1);
+
+            this.params.dateFrom = this.formatDate(nextMonthFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextMonthTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'last30days': {
+            // Dời thêm 30 ngày
+            const nextFrom = new Date(currentFrom);
+            const nextTo = new Date(currentTo);
+            nextFrom.setDate(nextFrom.getDate() + 30);
+            nextTo.setDate(nextTo.getDate() + 30);
+
+            this.params.dateFrom = this.formatDate(nextFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisYear': {
+            // Năm kế tiếp
+            const nextYearFrom = new Date(currentFrom);
+            const nextYearTo = new Date(currentTo);
+            nextYearFrom.setFullYear(nextYearFrom.getFullYear() + 1);
+            nextYearTo.setFullYear(nextYearTo.getFullYear() + 1);
+
+            this.params.dateFrom = this.formatDate(nextYearFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextYearTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'customDate': {
+            // Giữ khoảng cách giữa from/to rồi cộng dồn đúng khoảng đó
+            const diffMs = currentTo.getTime() - currentFrom.getTime();
+            const nextFrom = new Date(currentFrom.getTime() + diffMs + 1);
+            const nextTo = new Date(nextFrom.getTime() + diffMs);
+
+            this.params.dateFrom = this.formatDate(nextFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(nextTo) + ' 23:59:59';
+            break;
+          }
+
+          default:
+            console.warn('Next button: không xác định được loại textPickDate');
+            break;
+        }
+
+        break;
+      case 8: // PREV BUTTON
+        let prevCurrentFrom = new Date(this.params.dateFrom);
+        let prevCurrentTo = new Date(this.params.dateTo);
+
+        switch (this.textPickDate) {
+          case 'today': {
+            // Ngày hôm trước
+            const prevDayFrom = new Date(prevCurrentFrom);
+            const prevDayTo = new Date(prevCurrentTo);
+            prevDayFrom.setDate(prevDayFrom.getDate() - 1);
+            prevDayTo.setDate(prevDayTo.getDate() - 1);
+
+            this.params.dateFrom = this.formatDate(prevDayFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevDayTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisWeek': {
+            // Tuần trước
+            const prevWeekFrom = new Date(prevCurrentFrom);
+            const prevWeekTo = new Date(prevCurrentTo);
+            prevWeekFrom.setDate(prevWeekFrom.getDate() - 7);
+            prevWeekTo.setDate(prevWeekTo.getDate() - 7);
+
+            this.params.dateFrom = this.formatDate(prevWeekFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevWeekTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisMonth': {
+            // Tháng trước
+            const prevMonthFrom = new Date(prevCurrentFrom);
+            const prevMonthTo = new Date(prevCurrentTo);
+            prevMonthFrom.setMonth(prevMonthFrom.getMonth() - 1);
+            prevMonthTo.setMonth(prevMonthTo.getMonth() - 1);
+
+            this.params.dateFrom = this.formatDate(prevMonthFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevMonthTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'last30days': {
+            // Dời lùi 30 ngày
+            const prevFrom = new Date(prevCurrentFrom);
+            const prevTo = new Date(prevCurrentTo);
+            prevFrom.setDate(prevFrom.getDate() - 30);
+            prevTo.setDate(prevTo.getDate() - 30);
+
+            this.params.dateFrom = this.formatDate(prevFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'thisYear': {
+            // Năm trước
+            const prevYearFrom = new Date(prevCurrentFrom);
+            const prevYearTo = new Date(prevCurrentTo);
+            prevYearFrom.setFullYear(prevYearFrom.getFullYear() - 1);
+            prevYearTo.setFullYear(prevYearTo.getFullYear() - 1);
+
+            this.params.dateFrom = this.formatDate(prevYearFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevYearTo) + ' 23:59:59';
+            break;
+          }
+
+          case 'customDate': {
+            // Lùi lại đúng khoảng cách hiện tại
+            const diffMs = prevCurrentTo.getTime() - prevCurrentFrom.getTime();
+            const prevTo = new Date(prevCurrentFrom.getTime() - 1);
+            const prevFrom = new Date(prevTo.getTime() - diffMs);
+
+            this.params.dateFrom = this.formatDate(prevFrom) + ' 00:00:00';
+            this.params.dateTo = this.formatDate(prevTo) + ' 23:59:59';
+            break;
+          }
+        }
+        break;
     }
     this.charts = [];
-    this.textBtn =
-      data == 1
-        ? Utils.getDateString(new Date(), 'M d, yyyy')
-        : Utils.getDateString(this.params.dateFrom, 'M d, yyyy') +
-          ' - ' +
-          Utils.getDateString(this.params.dateTo, 'M d, yyyy');
-
     this.labels = this.generateXAxisLabels();
+    this.getTextBtnPickDate();
     this.updateXScaleFromParams();
     this.loadData4SnapshotCard(this.dataSnapshots);
     if (!Utils.isEmpty(this.chartDetail)) {
