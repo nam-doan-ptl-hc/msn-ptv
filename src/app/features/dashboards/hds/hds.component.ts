@@ -145,8 +145,8 @@ export class HdsComponent implements OnInit {
     combineLatest([this.userService.userInfo$, this.route.paramMap]).subscribe(
       ([user, params]) => {
         this.user = user || {};
-        this.id1 = params.get('id1') || '';
-        this.id2 = params.get('id2') || '';
+        this.id1 = params.get('id1') || '5b3c485bafa2ef11b3eabcc8';
+        this.id2 = params.get('id2') || '57df8645e0b2db266f249a95';
         this.id3 = params.get('id3') || '';
         console.log({ id1: this.id1, id2: this.id2, id3: this.id3 });
         this.refresh();
@@ -307,8 +307,14 @@ export class HdsComponent implements OnInit {
     } else if (gt === 'months') {
       this.xScale.min = 1;
       this.xScale.max = 12;
+      this.xScale.labels = this.labels;
+      this.xScale.type = 'category';
+    } else if (gt === 'minute') {
+      this.xScale.min = 1;
+      this.xScale.max = 60;
+      this.xScale.labels = this.labels;
+      this.xScale.type = 'category';
     }
-
     if (!this.xScale.ticks) this.xScale.ticks = {};
     this.xScale.ticks.stepSize = 1;
   }
@@ -767,9 +773,9 @@ export class HdsComponent implements OnInit {
     items.forEach((e: any) => {
       const data: { x: string | number; y: number; date?: string } = {
         x: '',
-        y: e.value,
+        y: Utils.roundDecimals(e.value, 1),
       };
-
+      if (e._id == null) return;
       if (group_type === 'months') {
         data.x = e._id.month.toString();
         data.date = `${e._id.year}-${String(e._id.month).padStart(2, '0')}-01`;
@@ -816,34 +822,51 @@ export class HdsComponent implements OnInit {
     return datas;
   }
   private mapDataToXYForMinute(
-    item: any
+    items: any
   ): { x: string | number; y: number; date?: string }[] {
     const datas: { x: string | number; y: number; date?: string }[] = [];
 
-    if (!item.values) {
+    if (items.length === 0) {
       return datas;
     }
+    items.forEach((item: any) => {
+      if (item.values > 0) {
+        Object.keys(item.values).forEach((hourKey) => {
+          Object.keys(item.values[hourKey]).forEach((minuteKey) => {
+            const records = item.values[hourKey][minuteKey];
+            records.forEach((r: any) => {
+              const dateObj = new Date(r.ts); // tự động thành giờ client
 
-    Object.keys(item.values).forEach((hourKey) => {
-      Object.keys(item.values[hourKey]).forEach((minuteKey) => {
-        const records = item.values[hourKey][minuteKey];
+              const yyyy = dateObj.getFullYear();
+              const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+              const dd = String(dateObj.getDate()).padStart(2, '0');
+              const hh = String(dateObj.getHours()).padStart(2, '0');
+              const mi = String(dateObj.getMinutes()).padStart(2, '0');
 
-        records.forEach((r: any) => {
-          const dateObj = new Date(r.ts); // tự động thành giờ client
-
-          const yyyy = dateObj.getFullYear();
-          const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const dd = String(dateObj.getDate()).padStart(2, '0');
-          const hh = String(dateObj.getHours()).padStart(2, '0'); // giờ client
-          const mi = String(dateObj.getMinutes()).padStart(2, '0'); // phút client
-
-          datas.push({
-            x: mi, // label theo phút
-            y: r.v,
-            date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`, // full datetime client
+              datas.push({
+                x: mi, // label theo phút
+                y: Utils.roundDecimals(r.v, 1),
+                date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`, // full datetime client
+              });
+            });
           });
         });
-      });
+      } else {
+        // Trường hợp item không có item.values, dùng dữ liệu trực tiếp từ item
+        const dateObj = new Date(item.start_at); // tự động thành giờ client
+
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const hh = String(dateObj.getHours()).padStart(2, '0');
+        const mi = String(dateObj.getMinutes()).padStart(2, '0');
+
+        datas.push({
+          x: mi, // label theo phút
+          y: item.value, // lấy giá trị gốc từ item
+          date: `${yyyy}-${mm}-${dd} ${hh}:${mi}`, // full datetime client
+        });
+      }
     });
 
     return datas;
@@ -972,7 +995,8 @@ export class HdsComponent implements OnInit {
       textPickDate === 'last30days' ||
       textPickDate === 'customDate' ||
       textPickDate === 'hour' ||
-      textPickDate === 'days'
+      textPickDate === 'days' ||
+      textPickDate === 'minute'
     ) {
       const scatterDataIndex = labels.flatMap((lbl) => {
         const found = datas.find((d) => Number(d.x) === Number(lbl));
@@ -1029,11 +1053,12 @@ export class HdsComponent implements OnInit {
 
     if (!Utils.isEmpty(res.data)) {
       if (group_type === 'minute') {
-        datas = this.mapDataToXYForMinute(res.data[0] || res.data);
+        datas = this.mapDataToXYForMinute(res.data);
         if (datas.length > 0) {
           min = Math.min(...datas.map((d) => d.y));
           max = Math.max(...datas.map((d) => d.y));
         }
+        this.labels = this.generateXAxisLabels();
       } else {
         datas = this.mapDataToXY(res.data[0].items);
         if (datas.length > 0) {
@@ -1049,14 +1074,14 @@ export class HdsComponent implements OnInit {
     ) {
       item.min_max =
         res.data[0]?.items.length === 1
-          ? res.data[0].min
+          ? Utils.formatValueByUnit(sample_type, res.data[0].min)
           : Utils.formatValueByUnit(sample_type, Number(res.data[0].min)) +
             ' - ' +
             Utils.formatValueByUnit(sample_type, Number(res.data[0].max));
     } else {
       item.avg = res.data[0]?.total
-        ? Utils.formatNumber(res.data[0]?.total)
-        : Utils.roundDecimals(res.data[0]?.avg || 0, 1);
+        ? Utils.formatValueByUnit(sample_type, res.data[0]?.total)
+        : Utils.formatValueByUnit(sample_type, res.data[0]?.avg || 0);
       if (res.data[0]?.avg > 0) {
         item.avg = Utils.formatValueByUnit(sample_type, Number(item.avg));
       }
@@ -1397,7 +1422,18 @@ export class HdsComponent implements OnInit {
         this.chartDetail = clonedItem;
 
         // breadcrumbs lưu lại snapshot -> clone thêm lần nữa
-        this.breadcrumbs.push(JSON.parse(JSON.stringify(clonedItem)));
+        const obj = Utils.findObject(
+          this.breadcrumbs,
+          'textPickDate',
+          clonedItem.textPickDate
+        );
+        if (obj.pos > -1) {
+          this.breadcrumbs.splice(obj.pos);
+        }
+        this.breadcrumbs = [
+          ...this.breadcrumbs,
+          JSON.parse(JSON.stringify(clonedItem)),
+        ];
       } else {
         this.pushChartFixedPosition(item, sample_type, sort_order);
       }

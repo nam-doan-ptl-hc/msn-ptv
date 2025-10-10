@@ -22,7 +22,7 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'dashboard-hds/:id1/:id2/:id3',
+        path: 'dashboard-hds',
         loadComponent: () =>
           import('./features/dashboards/hds/hds.component').then(
             (m) => m.HdsComponent

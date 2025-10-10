@@ -79,7 +79,7 @@
       >
         <div>
           <a
-            href="/dashboard-hds/5b3c485bafa2ef11b3eabcc8/57df8645e0b2db266f249a95/67f4ae5791e40edc30230055"
+            href="/dashboard-hds"
             *ngIf="isShowHealthData(element); else noData"
             target="_blank"
           >
@@ -87,7 +87,7 @@
               <img src="/assets/images/ic-db-new.svg" alt="Has Health Data" />
             </p>
             <p class="d-flex p-date">
-              <i class="material-icons">sync</i>
+              <i class="material-icons"></i>
               <span>{{
                 getStringTimeSync(
                   element?.patient_ref?.extended_attributes?.hds_last_sync

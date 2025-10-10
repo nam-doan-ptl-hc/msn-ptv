@@ -88,9 +88,9 @@
               src="/assets/images/patient_default_photo.svg"
             />
             <div class="clearfix u-info">
-              <p class="title ng-binding">{{ getNameAccount() }}</p>
-              <p class="date ng-binding">{{ user.email }}</p>
-              <p class="date ng-binding ng-hide"></p>
+              <p class="title">{{ getNameAccount() }}</p>
+              <p class="date">{{ user.email }}</p>
+              <p class="date ng-hide"></p>
             </div>
           </div>
           <div class="pad20 pab0 padt0 ng-scope" style="cursor: pointer">
@@ -107,7 +107,7 @@
                   style="cursor: pointer"
                 >
                   <span class="ng-scope" style="cursor: pointer"
-                    ><span class="md-caption ng-binding" style="cursor: pointer"
+                    ><span class="md-caption" style="cursor: pointer"
                       >View Recent Activity ></span
                     ></span
                   >
@@ -127,24 +127,17 @@
                   <img src="{{ item.src }}" />
                 </div>
                 <div class="align-right" style="cursor: pointer">
-                  <p
-                    class="p-title-snapshot ng-binding"
-                    style="cursor: pointer"
-                  >
+                  <p class="p-title-snapshot" style="cursor: pointer">
                     {{
                       (item.id == "BMI" ? "Body Mass Index" : item.id)
                         | uppercase
                     }}
                   </p>
                   <p class="s26 ng-scope" style="cursor: pointer">
-                    <span
-                      class="card-value-data ng-binding"
-                      style="cursor: pointer"
-                      >{{ item.value }}</span
-                    >
-                    <span class="unit ng-binding">{{
-                      showUnit(item.id, item.unit)
+                    <span class="card-value-data" style="cursor: pointer">{{
+                      item.value
                     }}</span>
+                    <span class="unit">{{ showUnit(item.id, item.unit) }}</span>
                   </p>
                 </div>
               </div>
@@ -161,9 +154,7 @@
                   style="cursor: pointer"
                 >
                   <i class="material-icons">sync</i>
-                  <span
-                    class="last-sync-time ng-binding"
-                    style="cursor: pointer"
+                  <span class="last-sync-time" style="cursor: pointer"
                     >Last synced on
                     {{ getStringTimeSync(item.sync_date_utc) }}</span
                   >
@@ -176,7 +167,7 @@
                   >
                     <span class="ng-scope"></span>
                     <span
-                      class="md-caption ng-binding"
+                      class="md-caption"
                       (click)="fncDetailChart(item.id, true)"
                       style="cursor: pointer"
                       >View Data ></span
@@ -203,6 +194,7 @@
           [changeViewDetail]="changeViewDetail"
           [group_type]="params.group_type"
           [breadcrumbs]="breadcrumbs"
+          [labels]="labels"
         ></hds-detail>
       </div>
 
@@ -226,13 +218,13 @@
                   layout-align="space-between center"
                 >
                   @if (item?.min_max) {
-                  <span class="s24 ng-binding">{{ item?.min_max }}</span>
+                  <span class="s24 min-max">{{ item?.min_max }}</span>
                   } @else if (item?.avg) {
-                  <span class="card-hd-text ng-binding">avg</span>
-                  <span class="s24 ng-binding">{{ item?.avg }}</span>
+                  <span class="card-hd-text">avg</span>
+                  <span class="s24 avg">{{ item?.avg }}</span>
 
                   }
-                  <span class="unit ng-binding">{{
+                  <span class="unit">{{
                     showUnit(item?.sample_type, item.items[0].primary_unit)
                   }}</span>
                 </span>
@@ -258,9 +250,7 @@
               <div class="d-flex view">
                 <div class="time-snap">
                   <i class="material-icons">sync</i>
-                  <span
-                    class="last-sync-time ng-binding"
-                    style="cursor: pointer"
+                  <span class="last-sync-time" style="cursor: pointer"
                     >Last synced on Aug 08, 2025 08:58:47</span
                   >
                 </div>
@@ -272,7 +262,7 @@
                   >
                     <span class="ng-scope">
                       <span
-                        class="md-caption ng-binding"
+                        class="md-caption"
                         (click)="fncDetailChart(item)"
                         style="cursor: pointer"
                         >View Data ></span

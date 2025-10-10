@@ -51,7 +51,9 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
   ) => void;
   @Input() chartDetail: any;
   @Input() group_type: any;
-  @Input() breadcrumbs: any;
+  @Input() breadcrumbs: any[] = [];
+
+  @Input() labels: string[] = initCharts.monthNames;
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private auth = inject(AuthService);
@@ -75,7 +77,6 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
   pageSize = 10;
   groupType = 'days';
   displayedColumns: string[] = ['value', 'date', 'type'];
-  labels: string[] = initCharts.monthNames;
   calcAverage(
     datas: { x: string; y: number | null; date: string }[]
   ): number | string {
@@ -247,6 +248,7 @@ export class HdsDetailComponent implements OnInit, AfterViewInit, OnChanges {
       this.updateTableData();
     }
     if (changes['chartDetail'] && this.chartDetail) {
+      console.log('labels', this.labels);
       const sampleType = this.chartDetail?.sample_type;
       this.chartDetail.chartOptions.plugins.tooltip.callbacks.title = (
         context: any

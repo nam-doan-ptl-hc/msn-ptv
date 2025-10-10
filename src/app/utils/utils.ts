@@ -833,7 +833,10 @@ export class Utils {
         }
         return this.roundDecimals(value, 0);
       }
-
+      case 'STEP': {
+        const formatted = this.formatNumber(this.roundDecimals(value, 0));
+        return formatted != null ? formatted : '';
+      }
       default:
         return value != null ? this.roundDecimals(value, 1) : '';
     }
