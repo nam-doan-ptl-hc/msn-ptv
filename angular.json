@@ -91,7 +91,9 @@
             }
           },
           "options": {
-            "port": 4201
+            "port": 4201,
+            "host": "0.0.0.0",
+            "allowedHosts": ["vnmsn.ptvltd.com", "ihealth.ptvltd.com"]
           },
           "defaultConfiguration": "development"
         },
