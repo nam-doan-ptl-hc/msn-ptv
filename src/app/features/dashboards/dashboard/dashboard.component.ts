@@ -39,7 +39,7 @@ interface DashboardRow {
   hds_dbrd_permission?: number;
   patient_ref?: any;
   default_hds_record?: number;
-  patient?: { first_name?: string; last_name?: string };
+  patient?: { first_name?: string; last_name?: string; email?: string };
   patient_set_by_doctor?: { first_name?: string; last_name?: string };
 }
 
@@ -82,12 +82,27 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   totalRecords = 0;
   pageSize = 10;
   pageIndex = 0;
-
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId) && !this.auth.isLoggedIn()) {
       this.router.navigate(['/']);
     }
-    this.loadData();
+    this.dataSource.data = [
+      {
+        name: 'duyen dm',
+        account: 'testuser',
+        code: 1,
+        permission: { code: 6 },
+        hds_dbrd_permission: 1,
+        default_hds_record: 1,
+        smartlist: { extended_ui_attributes: { user_health_data: {} } },
+        patient: {
+          first_name: 'Test',
+          last_name: 'User',
+          email: 'duyendm@doctella.com',
+        },
+      },
+    ];
+    //this.loadData();
   }
 
   ngAfterViewInit() {
